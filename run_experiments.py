@@ -14,7 +14,7 @@ if len(sys.argv) <= 1:
 	raise SystemExit
 
 def validation(classifiers_feats, X_valid, y_valid):
-    k_max = [5,10,20,30,40,50]
+    k_max = [3,5,10,20,30,40,50]
     best_k = 0
     value_best_k = -1.0
 
@@ -71,7 +71,7 @@ ds = sys.argv[1]
 
 #for ds in datasets:
 for n in n_models:
-    for f in range(1,5):
+    for f in range(1,21):
         
         ResultsPath = 'Results/OPF_Ensemble/{}/{}/{}'.format(ds,f,n)
         if not os.path.exists(ResultsPath):
@@ -101,7 +101,6 @@ for n in n_models:
         end_time = time() -start_time
 
         saveResults(pred_ensamble, y_test, best_k, validation_results, end_time, ResultsPath)  
-        print(validation_results)
         
         start_time = time()
         sl = SuperLearner(models=opf_ens.ensemble.copy(), n_folds=10, type_='first')

@@ -1,4 +1,5 @@
 from opf_ensemble import OpfSemble
+from super_learner import SuperLearner
 from time import time
 import numpy as np
 import sys
@@ -32,11 +33,11 @@ def run(classifiers_feats, X_test, X_valid, y_valid):
     opf_ens.fit_meta_model(classifiers_feats,best_k)
     return opf_ens.predict(X_test), best_k, results_validation
 
-def saveResults(pred_ensamble,y_test, best_k, validation, exec_time, path):
+def saveResults(pred_ensamble,y_test, best_k, validation, exec_time, path, ensemble_name='OPF_ENSEMBLE'):
 
     results = ''
     accuracy, f1 = computeMetrics(pred_ensamble,y_test)
-    results = results + '{:s},{:d},{:.4f},{:.4f},{:.4f}\n'.format('OPF_ENSEMBLE',best_k, accuracy, f1, exec_time)
+    results = results + '{:s},{:d},{:.4f},{:.4f},{:.4f}\n'.format(ensemble_name, best_k, accuracy, f1, exec_time)
     
     for key in opf_ens.ensemble:
         model = opf_ens.ensemble[key]
@@ -70,11 +71,15 @@ ds = sys.argv[1]
 
 #for ds in datasets:
 for n in n_models:
-    for f in range(1,21):
+    for f in range(1,5):
         
-        ResultsPath = 'Results/OPF_Ensamble/{}/{}/{}'.format(ds,f,n)
+        ResultsPath = 'Results/OPF_Ensemble/{}/{}/{}'.format(ds,f,n)
         if not os.path.exists(ResultsPath):
             os.makedirs(ResultsPath)
+            
+        ResultsPath_Sl = 'Results/Super_Learner/{}/{}/{}'.format(ds,f,n)
+        if not os.path.exists(ResultsPath_Sl):
+            os.makedirs(ResultsPath_Sl)
 
         train = np.loadtxt('data/{}/{}/train.txt'.format(ds,f),delimiter=',', dtype=np.float32)
         valid = np.loadtxt('data/{}/{}/valid.txt'.format(ds,f),delimiter=',', dtype=np.float32)
@@ -95,4 +100,13 @@ for n in n_models:
         pred_ensamble, best_k, validation_results = run(new_x, X_test, X_valid, y_valid)
         end_time = time() -start_time
 
-        saveResults(pred_ensamble, y_test, best_k, validation_results, end_time, ResultsPath)
+        saveResults(pred_ensamble, y_test, best_k, validation_results, end_time, ResultsPath)  
+        print(validation_results)
+        
+        start_time = time()
+        sl = SuperLearner(models=opf_ens.ensemble.copy(), n_folds=10, type_='first')
+        sl.fit(X, y)
+        preds_super_learner = sl.predict(X_test)
+        end_time = time() - start_time
+        
+        saveResults(preds_super_learner, y_test, 0, np.asarray([[0, 0.0, 0.0]]), end_time, ResultsPath_Sl, ensemble_name='Super_Learner')

@@ -16,6 +16,8 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.svm import SVC
+from sklearn.naive_bayes import GaussianNB
+from sklearn.neural_network import MLPClassifier
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier, ExtraTreesClassifier
 from sklearn.neural_network import MLPClassifier
 from scipy.stats import mode
@@ -56,9 +58,11 @@ class OpfSemble:
 
 		print('Creating model 1')
 		ensemble['OPF_1'] = SupervisedOPF()
+		print('Creating model 2')
+		ensemble['Naive Bayes_1'] = GaussianNB()
 	
-		for i in range(n_models-1):
-			print('Creating model ', i+2)
+		for i in range(n_models-2):
+			print('Creating model ', i+3)
 			model = base_models_names[np.random.randint(0, len(base_models_names))]
 			id_model = len([key for key in ensemble.keys() if key.startswith(model)])
 			
@@ -69,7 +73,6 @@ class OpfSemble:
 			                                                 kernel=np.random.choice(['rbf','linear','poly','sigmoid'], 1)[0],
 			                                                 degree=np.random.randint(1, 10),
 			                                                 gamma=np.random.random())
-
 			elif(model == 'Random Forest'):
 			    ensemble[model + '_' + str(id_model + 1)] = RandomForestClassifier(n_estimators=np.random.randint(10,500),
 			                                                                       criterion=np.random.choice(['gini', 'entropy'], 1)[0])
@@ -81,7 +84,7 @@ class OpfSemble:
 			                                                                     criterion=np.random.choice(['gini', 'entropy'], 1)[0])
 			elif(model == 'LDA'):
 			    ensemble[model + '_' + str(id_model + 1)] = LinearDiscriminantAnalysis(solver=np.random.choice(['svd','lsqr','eigen'], 1)[0])
-	
+
 		self.ensemble = ensemble
 		self.n_folds = n_folds
 		self.n_models = n_models

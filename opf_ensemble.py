@@ -55,13 +55,13 @@ class OpfSemble:
 		base_models_names = ['KNN', 'SVM', 'Random Forest', 'Gradient Boosting', 'Extra Trees', 'LDA']
 		ensemble = dict()
 
-		print('Creating model 1')
+		#print('Creating model  1')
 		ensemble['OPF_1'] = SupervisedOPF()
-		print('Creating model 2')
+		#print('Creating model  2')
 		ensemble['Naive Bayes_1'] = GaussianNB()
 	
 		for i in range(n_models-2):
-			print('Creating model ', i+3)
+			#print('Creating model ', i+3)
 			model = base_models_names[np.random.randint(0, len(base_models_names))]
 			id_model = len([key for key in ensemble.keys() if key.startswith(model)])
 			

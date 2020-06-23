@@ -55,7 +55,6 @@ class OpfSemble:
 		base_models_names = ['KNN', 'SVM', 'Random Forest', 'Gradient Boosting', 'Extra Trees', 'LDA']
 		ensemble = dict()
 
-
 		print('Creating model 1')
 		ensemble['OPF_1'] = SupervisedOPF()
 		print('Creating model 2')

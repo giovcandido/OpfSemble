@@ -50,7 +50,7 @@ class SuperLearner:
             ens = models
             
         if (type_ == 'all'):
-            self.models = ens
+            self.ensemble = ens
         else:            
             ens_ = dict()
             
@@ -58,7 +58,7 @@ class SuperLearner:
                 if (key.endswith('_1')):
                     ens_[key] = models[key]
             
-            self.models = ens_
+            self.ensemble = ens_
 
         self.n_folds = n_folds        
         self.meta_model = None        
@@ -108,8 +108,8 @@ class SuperLearner:
             meta_y.extend(test_y)
             # fit and make predictions with each sub-model
             
-            for key in self.models:
-                model = self.models[key]
+            for key in self.ensemble:
+                model = self.ensemble[key]
                 model.fit(train_X, train_y)
                 yhat = np.asarray(model.predict(test_X)).reshape(-1,1)
                 # store columns
@@ -141,8 +141,8 @@ class SuperLearner:
         
         meta_X = list()
         
-        for key in self.models:
-            model = self.models[key]
+        for key in self.ensemble:
+            model = self.ensemble[key]
             yhat = np.asarray(model.predict(X)).reshape(-1,1)
             meta_X.append(yhat)
     	

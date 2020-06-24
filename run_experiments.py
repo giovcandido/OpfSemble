@@ -4,6 +4,7 @@ from time import time
 import numpy as np
 import sys
 import os
+import copy
 
 from sklearn.metrics import accuracy_score, recall_score, f1_score
 from opfython.models.unsupervised import UnsupervisedOPF
@@ -33,33 +34,31 @@ def run(classifiers_feats, X_test, X_valid, y_valid):
     opf_ens.fit_meta_model(classifiers_feats,best_k)
     return opf_ens.predict(X_test), best_k, results_validation
 
-def saveResults(pred_ensamble,y_test, best_k, validation, exec_time, path, ensemble_name='OPF_ENSEMBLE'):
+def saveResults(pred_ensamble, X_train, y_train, y_test, best_k, validation, exec_time, path, obj, ensemble_name='OPF_ENSEMBLE', compute_models=False):
+	results = ''
+	accuracy, f1 = computeMetrics(pred_ensamble,y_test)
+	results = results + '{:s},{:d},{:.4f},{:.4f},{:.4f}\n'.format(ensemble_name, best_k, accuracy, f1, exec_time)
 
-    results = ''
-    accuracy, f1 = computeMetrics(pred_ensamble,y_test)
-    results = results + '{:s},{:d},{:.4f},{:.4f},{:.4f}\n'.format(ensemble_name, best_k, accuracy, f1, exec_time)
-    
-    for key in opf_ens.ensemble:
-        model = opf_ens.ensemble[key]
-        pred = model.predict(X_test)
-        accuracy, f1 = computeMetrics(pred,y_test)
-        results = results + '{:s},{:d},{:.4f},{:.4f},{:.4f}\n'.format(key,0, accuracy, f1, 0)
-    
+	if compute_models:
+		for key in obj.ensemble:
+			model = obj.ensemble[key]
+			model.fit(X_train, y_train)
+			pred = model.predict(X_test)
+			accuracy, f1 = computeMetrics(pred,y_test)
+			results = results + '{:s},{:d},{:.4f},{:.4f},{:.4f}\n'.format(key,0, accuracy, f1, 0)
 
-    
-    np.savetxt('{}/pred.txt'.format(path), pred, fmt='%d')
-    np.savetxt('{}/validation.txt'.format(path), validation, fmt='%d,%.5f,%.5f')
-    output= open('{}/results.txt'.format(path), "w")    
-    output.write(results)
-    print('Results:')
-    print('    {}/pred.txt'.format(path))
-    print('    {}/results.txt'.format(path))
-    print('    {}/validation.txt'.format(path))
-
+	np.savetxt('{}/pred.txt'.format(path), pred, fmt='%d')
+	np.savetxt('{}/validation.txt'.format(path), validation, fmt='%d,%.5f,%.5f')
+	output= open('{}/results.txt'.format(path), "w")    
+	output.write(results)
+	print('Results:')
+	print('    {}/pred.txt'.format(path))
+	print('    {}/results.txt'.format(path))
+	print('    {}/validation.txt'.format(path))
 
 def computeMetrics(y_pred, y_true):
     accuracy = accuracy_score(y_true, y_pred)
-    f1 = f1_score(y_true, y_pred)
+    f1 = f1_score(y_true, y_pred, average='weighted')
     return accuracy, f1
 
 
@@ -81,6 +80,10 @@ for n in n_models:
         if not os.path.exists(ResultsPath_Sl):
             os.makedirs(ResultsPath_Sl)
 
+        ResultsPath_Sl_Full = 'Results/Super_Learner_Full/{}/{}/{}'.format(ds,f,n)
+        if not os.path.exists(ResultsPath_Sl_Full):
+            os.makedirs(ResultsPath_Sl_Full)
+
         train = np.loadtxt('data/{}/{}/train.txt'.format(ds,f),delimiter=',', dtype=np.float32)
         valid = np.loadtxt('data/{}/{}/valid.txt'.format(ds,f),delimiter=',', dtype=np.float32)
         test = np.loadtxt('data/{}/{}/test.txt'.format(ds,f),delimiter=',', dtype=np.float32)
@@ -100,12 +103,20 @@ for n in n_models:
         pred_ensamble, best_k, validation_results = run(new_x, X_test, X_valid, y_valid)
         end_time = time() -start_time
 
-        saveResults(pred_ensamble, y_test, best_k, validation_results, end_time, ResultsPath)  
-        
-        start_time = time()
-        sl = SuperLearner(models=opf_ens.ensemble.copy(), n_folds=10, type_='first')
-        sl.fit(X, y)
-        preds_super_learner = sl.predict(X_test)
-        end_time = time() - start_time
-        
-        saveResults(preds_super_learner, y_test, 0, np.asarray([[0, 0.0, 0.0]]), end_time, ResultsPath_Sl, ensemble_name='Super_Learner')
+		saveResults(pred_ensamble, X, y, y_test, best_k, validation_results, end_time, ResultsPath, opf_ens, compute_models=True)  
+
+		start_time = time()
+		sl = SuperLearner(models=copy.deepcopy(opf_ens.ensemble), n_folds=10, type_='first')
+		sl.fit(X, y)
+		preds_super_learner = sl.predict(X_test)
+		end_time = time() - start_time
+
+		saveResults(preds_super_learner, X, y, y_test, 0, np.asarray([[0, 0.0, 0.0]]), end_time, ResultsPath_Sl, sl, ensemble_name='Super_Learner', compute_models=True)
+
+		start_time = time()
+		sl_full = SuperLearner(models=copy.deepcopy(opf_ens.ensemble), n_folds=10)
+		sl_full.fit(X, y)
+		preds_super_learner_full = sl_full.predict(X_test)
+		end_time = time() - start_time
+
+		saveResults(preds_super_learner_full, X, y, y_test, 0, np.asarray([[0, 0.0, 0.0]]), end_time, ResultsPath_Sl_Full, sl_full, ensemble_name='Super_Learner_Full', compute_models=True)

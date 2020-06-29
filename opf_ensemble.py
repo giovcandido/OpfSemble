@@ -137,9 +137,16 @@ class OpfSemble:
 			pred, _ = mode(preds, axis=0)
 			pred = pred[0]
 		elif voting=='average':
-			mat = np.zeros((len(np.unique(y)), len(self.prototypes)))
-			pred = np.zeros(len(y))
 			#compute the prototypes average score by label
+			n_classes = len(np.unique(y))
+			if n_classes<np.max(y):
+				n_classes= np.max(y)
+			for prot in range(len(self.prototypes)):
+				if n_classes<np.max(preds[prot]):
+					n_classes= np.max(preds[prot])
+
+			mat = np.zeros((n_classes, len(self.prototypes)))
+			pred = np.zeros(len(y))
 			for sample in range(len(y)):
 				for prot in range(len(self.prototypes)):
 					mat[preds[prot,sample]-1,prot] = f1s[prot]

@@ -29,7 +29,7 @@ class OpfSemble:
 	A class which implements the OPF Ensemble Learning.
 	"""
 
-	def __init__(self, n_models=10, n_folds=10):
+	def __init__(self, n_models=10, n_folds=10,n_classes=0):
 		"""
 		Initialization of the class properties.
 
@@ -46,7 +46,7 @@ class OpfSemble:
 		self.n_models = n_models
 		self.prototypes = None
 		self.prototypes_scores = None
-		self.n_classes = 0
+		self.n_classes = n_classes
 
 	# create a list of base-models
 	def get_models(self):
@@ -81,7 +81,10 @@ class OpfSemble:
 		"""
 
 		meta_X = np.array([], dtype=int)
-		self.n_classes = np.unique(y)
+		if self.n_classes==0:
+			self.n_classes = len(np.unique(y))
+			if self.n_classes<np.max(y):
+				self.n_classes = np.max(y)
 
 		# define split of data
 		kfold = KFold(n_splits=self.n_folds, shuffle=True)
@@ -144,7 +147,7 @@ class OpfSemble:
 			pred = pred[0]
 		elif voting=='average':
 			#compute the prototypes average score by label
-			mat = np.zeros((len(self.n_classes), len(self.prototypes)))
+			mat = np.zeros((self.n_classes, len(self.prototypes)))
 			pred = np.zeros(len(X))
 			for sample in range(len(X)):
 				for prot in range(len(self.prototypes)):

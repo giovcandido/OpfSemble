@@ -85,9 +85,14 @@ for n in n_models:
 		X_test = test[:,:-1]
 		y_test = test[:,-1].astype(np.int) 
 
+        concat = np.concatenate((y, y_valid))
+		concat = np.concatenate((concat, y_test))
+		n_classes = len(np.unique(concat))
+		if n_classes<np.max(concat):
+			n_classes = np.max(concat)
 
 		start_time = time()
-		opf_ens = OpfSemble(n_models=n, n_folds=10)
+		opf_ens = OpfSemble(n_models=n, n_folds=10, n_classes=n_classes)
 		new_x = opf_ens.fit(X, y)
 		end_time_initial = time() -start_time
 		voting = ['mode', 'average']

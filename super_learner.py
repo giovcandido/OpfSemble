@@ -50,13 +50,13 @@ class SuperLearner:
             ens = models
             
         if (type_ == 'all'):
-            self.ensemble = ens
+            self.ensemble = ens.ensemble
         else:            
             ens_ = dict()
             
-            for key in models.keys():
+            for key in models.ensemble.keys():
                 if (key.endswith('_1')):
-                    ens_[key] = models[key]
+                    ens_[key] = models.ensemble[key]
             
             self.ensemble = ens_
 

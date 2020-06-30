@@ -33,11 +33,14 @@ class Ensemble:
 	
 		base_models_names = ['KNN', 'SVM', 'Random Forest', 'Gradient Boosting', 'Extra Trees']
 		ensemble = dict()
+		score = dict()
 
 		#print('Creating model  1')
 		ensemble['OPF_1'] = SupervisedOPF()
+		score['OPF_1'] = 0.0
 		#print('Creating model  2')
 		ensemble['Naive Bayes_1'] = GaussianNB()
+		score['Naive Bayes_1'] = 0.0
 	
 		for i in range(n_models-2):
 			#print('Creating model ', i+3)
@@ -60,5 +63,6 @@ class Ensemble:
 			elif(model == 'Extra Trees'):
 			    ensemble[model + '_' + str(id_model + 1)] = ExtraTreesClassifier(n_estimators=np.random.randint(10,500),
 			                                                                     criterion=np.random.choice(['gini', 'entropy'], 1)[0])
-
+			score[model + '_' + str(id_model + 1)] = 0.0
 		self.ensemble = ensemble
+		self.score = score

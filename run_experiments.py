@@ -22,17 +22,17 @@ def validation(classifiers_feats, X_valid, y_valid, voting='mode'):
     results_validation=[]
     for k in k_max:
         opf_ens.fit_meta_model(classifiers_feats,k)
-        accuracy, f1 = computeMetrics(opf_ens.predict(X_valid, y_valid,voting= voting),y_valid)
+        accuracy, f1 = computeMetrics(opf_ens.predict(X_valid, voting= voting),y_valid)
         results_validation.append([k, accuracy, f1])
         if f1>value_best_k:
             best_k = k
             value_best_k = f1        
     return best_k, results_validation
 
-def run(classifiers_feats, X_test, y_test, X_valid, y_valid, voting='mode'):
+def run(classifiers_feats, X_test, X_valid, y_valid, voting='mode'):
     best_k, results_validation = validation(classifiers_feats, X_valid, y_valid, voting)
     opf_ens.fit_meta_model(classifiers_feats,best_k)
-    return opf_ens.predict(X_test, y_test, voting), best_k, results_validation
+    return opf_ens.predict(X_test, voting), best_k, results_validation
 
 def saveResults(pred_ensamble, X_train, y_train, y_test, best_k, validation, exec_time, path, obj, ensemble_name='OPF_ENSEMBLE', compute_models=False):
 	results = ''
@@ -98,9 +98,9 @@ for n in n_models:
 			    os.makedirs(ResultsPath)
 
 			start_time = time()        
-			pred_ensamble, best_k, validation_results = run(new_x, X_test, y_test, X_valid, y_valid, voting = vote)
+			pred_ensamble, best_k, validation_results = run(new_x, X_test, X_valid, y_valid, voting = vote)
 			end_time = time() -start_time
-			saveResults(pred_ensamble, X, y, y_test, best_k, validation_results, end_time+end_time_initial, ResultsPath, opf_ens, ensemble_name='OPF_ENSEMBLE_{}'.format(vote), compute_models=True)  
+			saveResults(pred_ensamble, X, y, y_test, best_k, validation_results, end_time+end_time_initial, ResultsPath, opf_ens.ensemble, ensemble_name='OPF_ENSEMBLE_{}'.format(vote), compute_models=True)  
 
 		ResultsPath_Sl = 'Results/Super_Learner/{}/{}/{}'.format(ds,f,n)
 		if not os.path.exists(ResultsPath_Sl):

@@ -39,12 +39,12 @@ def saveResults(pred_ensamble, X_train, y_train, y_test, best_k, validation, exe
     results = results + '{:s},{:d},{:.4f},{:.4f},{:.4f}\n'.format(ensemble_name, best_k, accuracy, f1, exec_time)
 
     if compute_models:
-        for key in obj.ensemble:
-            model = obj.ensemble[key]
+        for item in obj.items:
+            model = item.classifier
             model.fit(X_train, y_train)
             pred = model.predict(X_test)
             accuracy, f1 = computeMetrics(pred,y_test)
-            results = results + '{:s},{:d},{:.4f},{:.4f},{:.4f}\n'.format(key,0, accuracy, f1, 0)
+            results = results + '{:s},{:d},{:.4f},{:.4f},{:.4f}\n'.format(item.key,0, accuracy, f1, 0)
 
     np.savetxt('{}/pred.txt'.format(path), pred, fmt='%d')
     np.savetxt('{}/validation.txt'.format(path), validation, fmt='%d,%.5f,%.5f')
@@ -61,71 +61,73 @@ def computeMetrics(y_pred, y_true):
     return accuracy, f1
 
 
-#datasets = ['vertebral_column', 'diagnostic']
-n_models = [10]#,30,50,100]
+datasets = ['vertebral_column']
+n_models = [10,30]#,50,100]
 
-ds = sys.argv[1]
+#ds = sys.argv[1]
+
+results_folder = 'Results_test'
 
 
-#for ds in datasets:
-for n in n_models:
-    for f in range(1,4):
-        
-        train = np.loadtxt('data/{}/{}/train.txt'.format(ds,f),delimiter=',', dtype=np.float32)
-        valid = np.loadtxt('data/{}/{}/valid.txt'.format(ds,f),delimiter=',', dtype=np.float32)
-        test = np.loadtxt('data/{}/{}/test.txt'.format(ds,f),delimiter=',', dtype=np.float32)
+for ds in datasets:
+	for n in n_models:
+		for f in range(1,2):
+		    
+		    train = np.loadtxt('data/{}/{}/train.txt'.format(ds,f),delimiter=',', dtype=np.float32)
+		    valid = np.loadtxt('data/{}/{}/valid.txt'.format(ds,f),delimiter=',', dtype=np.float32)
+		    test = np.loadtxt('data/{}/{}/test.txt'.format(ds,f),delimiter=',', dtype=np.float32)
 
-        X = train[:,:-1]
-        y = train[:,-1].astype(np.int) 
+		    X = train[:,:-1]
+		    y = train[:,-1].astype(np.int) 
 
-        X_valid = valid[:,:-1]
-        y_valid = valid[:,-1].astype(np.int) 
+		    X_valid = valid[:,:-1]
+		    y_valid = valid[:,-1].astype(np.int) 
 
-        X_test = test[:,:-1]
-        y_test = test[:,-1].astype(np.int) 
+		    X_test = test[:,:-1]
+		    y_test = test[:,-1].astype(np.int) 
 
-        concat = np.concatenate((y, y_valid))
-        concat = np.concatenate((concat, y_test))
-        n_classes = len(np.unique(concat))
-        if n_classes<np.max(concat):
-            n_classes = np.max(concat)
+		    concat = np.concatenate((y, y_valid))
+		    concat = np.concatenate((concat, y_test))
+		    n_classes = len(np.unique(concat))
+		    if n_classes<np.max(concat):
+		        n_classes = np.max(concat)
 
-        start_time = time()
-        opf_ens = OpfSemble(n_models=n, n_folds=10, n_classes=n_classes)
-        new_x = opf_ens.fit(X, y)
-        end_time_initial = time() -start_time
-        voting = ['mode', 'average', 'intercluster']
-        for vote in voting:
+		    start_time = time()
+		    opf_ens = OpfSemble(n_models=n, n_folds=10, n_classes=n_classes)
+		    new_x = opf_ens.fit(X, y)
+		    end_time_initial = time() -start_time
+		    voting = ['mode', 'average', 'intercluster','mode_best']
+		    for vote in voting:
 
-            ResultsPath = 'Results/OPF_Ensemble_{}/{}/{}/{}'.format(vote,ds,f,n)
-            if not os.path.exists(ResultsPath):
-                os.makedirs(ResultsPath)
+		        ResultsPath = '{}/OPF_Ensemble_{}/{}/{}/{}'.format(results_folder,vote,ds,f,n)
+		        if not os.path.exists(ResultsPath):
+		            os.makedirs(ResultsPath)
 
-            start_time = time()        
-            pred_ensamble, best_k, validation_results = run(new_x, X_test, X_valid, y_valid, voting = vote)
-            end_time = time() -start_time
-            saveResults(pred_ensamble, X, y, y_test, best_k, validation_results, end_time+end_time_initial, ResultsPath, opf_ens.ensemble, ensemble_name='OPF_ENSEMBLE_{}'.format(vote), compute_models=True)  
+		        start_time = time()        
+		        pred_ensamble, best_k, validation_results = run(new_x, X_test, X_valid, y_valid, voting = vote)
+		        end_time = time() -start_time
+		        saveResults(pred_ensamble, X, y, y_test, best_k, validation_results, end_time+end_time_initial, ResultsPath, opf_ens.ensemble, ensemble_name='OPF_ENSEMBLE_{}'.format(vote), compute_models=True)  
 
-        ResultsPath_Sl = 'Results/Super_Learner/{}/{}/{}'.format(ds,f,n)
-        if not os.path.exists(ResultsPath_Sl):
-            os.makedirs(ResultsPath_Sl)
+		    ResultsPath_Sl = '{}/Super_Learner/{}/{}/{}'.format(results_folder,ds,f,n)
+		    if not os.path.exists(ResultsPath_Sl):
+		        os.makedirs(ResultsPath_Sl)
 
-        start_time = time()
-        sl = SuperLearner(models=copy.deepcopy(opf_ens.ensemble), n_folds=10, type_='first')
-        sl.fit(X, y)
-        preds_super_learner = sl.predict(X_test)
-        end_time = time() - start_time
+		    start_time = time()
+		    sl = SuperLearner(models=copy.deepcopy(opf_ens.ensemble), n_folds=10, type_='first')
+		    sl.fit(X, y)
+		    preds_super_learner = sl.predict(X_test)
+		    end_time = time() - start_time
 
-        saveResults(preds_super_learner, X, y, y_test, 0, np.asarray([[0, 0.0, 0.0]]), end_time, ResultsPath_Sl, sl, ensemble_name='Super_Learner', compute_models=True)
+		    saveResults(preds_super_learner, X, y, y_test, 0, np.asarray([[0, 0.0, 0.0]]), end_time, ResultsPath_Sl, sl.ensemble, ensemble_name='Super_Learner', compute_models=True)
 
-        ResultsPath_Sl_Full = 'Results/Super_Learner_Full/{}/{}/{}'.format(ds,f,n)
-        if not os.path.exists(ResultsPath_Sl_Full):
-            os.makedirs(ResultsPath_Sl_Full)
+		    ResultsPath_Sl_Full = '{}/Super_Learner_Full/{}/{}/{}'.format(results_folder,ds,f,n)
+		    if not os.path.exists(ResultsPath_Sl_Full):
+		        os.makedirs(ResultsPath_Sl_Full)
 
-        start_time = time()
-        sl_full = SuperLearner(models=copy.deepcopy(opf_ens.ensemble), n_folds=10)
-        sl_full.fit(X, y)
-        preds_super_learner_full = sl_full.predict(X_test)
-        end_time = time() - start_time
+		    start_time = time()
+		    sl_full = SuperLearner(models=copy.deepcopy(opf_ens.ensemble), n_folds=10)
+		    sl_full.fit(X, y)
+		    preds_super_learner_full = sl_full.predict(X_test)
+		    end_time = time() - start_time
 
-        saveResults(preds_super_learner_full, X, y, y_test, 0, np.asarray([[0, 0.0, 0.0]]), end_time, ResultsPath_Sl_Full, sl_full, ensemble_name='Super_Learner_Full', compute_models=True)
+		    saveResults(preds_super_learner_full, X, y, y_test, 0, np.asarray([[0, 0.0, 0.0]]), end_time, ResultsPath_Sl_Full, sl_full.ensemble, ensemble_name='Super_Learner_Full', compute_models=True)

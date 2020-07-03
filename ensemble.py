@@ -3,6 +3,7 @@ from sklearn.svm import SVC
 from sklearn.naive_bayes import GaussianNB
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier, ExtraTreesClassifier
 from opfython.models.supervised import SupervisedOPF
+from ensemble_item import EnsembleItem
 import numpy as np
 import sys
 
@@ -31,37 +32,39 @@ class Ensemble:
 			raise Exception('The number of models must be an integer value!')
 	
 		base_models_names = ['KNN', 'SVM', 'Random Forest', 'Gradient Boosting', 'Extra Trees']
-		ensemble = dict()
-		score = dict()
+		self.n_models=n_models
+		self.items = []
 
 		#print('Creating model  1')
-		ensemble['OPF_1'] = SupervisedOPF()
-		score['OPF_1'] = 0.0
+		self.items.append(EnsembleItem('OPF_1',SupervisedOPF()))
 		#print('Creating model  2')
-		ensemble['Naive Bayes_1'] = GaussianNB()
-		score['Naive Bayes_1'] = 0.0
+		self.items.append(EnsembleItem('Naive Bayes_1',GaussianNB()))
 	
 		for i in range(n_models-2):
 			#print('Creating model ', i+3)
 			model = base_models_names[np.random.randint(0, len(base_models_names))]
-			id_model = len([key for key in ensemble.keys() if key.startswith(model)])
+			keys=[]
+			for item in self.items:
+				keys.append(item.key)
+
+			id_model = len([key for key in keys if key.startswith(model)])
 			
 			if (model == 'KNN'):
-			    ensemble[model + '_' + str(id_model + 1)] = KNeighborsClassifier(n_neighbors = np.random.randint(1, 51))
+				self.items.append(EnsembleItem(model + '_' + str(id_model + 1),KNeighborsClassifier(n_neighbors = np.random.randint(1, 51))))
 			elif(model == 'SVM'):
-			    ensemble[model + '_' + str(id_model + 1)] = SVC(C=np.random.random(),
+				self.items.append(EnsembleItem(model + '_' + str(id_model + 1),SVC(C=np.random.random(),
 			                                                 kernel=np.random.choice(['rbf','linear','poly','sigmoid'], 1)[0],
 			                                                 degree=np.random.randint(1, 10),
-			                                                 gamma=np.random.random())
+			                                                 gamma=np.random.random())))
 			elif(model == 'Random Forest'):
-			    ensemble[model + '_' + str(id_model + 1)] = RandomForestClassifier(n_estimators=np.random.randint(10,500),
-			                                                                       criterion=np.random.choice(['gini', 'entropy'], 1)[0])
+				self.items.append(EnsembleItem(model + '_' + str(id_model + 1),RandomForestClassifier(n_estimators=np.random.randint(10,500),
+			                                                                       criterion=np.random.choice(['gini', 'entropy'], 1)[0])))
+
+
 			elif(model == 'Gradient Boosting'):
-			    ensemble[model + '_' + str(id_model + 1)] = GradientBoostingClassifier(learning_rate=np.random.random_sample(),
-			                                                                           n_estimators=np.random.randint(10,500))
+				self.items.append(EnsembleItem(model + '_' + str(id_model + 1),GradientBoostingClassifier(learning_rate=np.random.random_sample(),
+			                                                                           n_estimators=np.random.randint(10,500))))
+
 			elif(model == 'Extra Trees'):
-			    ensemble[model + '_' + str(id_model + 1)] = ExtraTreesClassifier(n_estimators=np.random.randint(10,500),
-			                                                                     criterion=np.random.choice(['gini', 'entropy'], 1)[0])
-			score[model + '_' + str(id_model + 1)] = 0.0
-		self.ensemble = ensemble
-		self.score = score
+				self.items.append(EnsembleItem(model + '_' + str(id_model + 1),ExtraTreesClassifier(n_estimators=np.random.randint(10,500),
+			                                                                     criterion=np.random.choice(['gini', 'entropy'], 1)[0])))

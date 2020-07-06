@@ -145,10 +145,8 @@ class OpfSemble:
 		preds = []
 		scores = []
 
-		print('self.prototypes={}'.format(self.prototypes))
 		for key in self.prototypes:
 			model = self.prototypes[key]
-			print(key)
 			scores.append(self.prototypes_scores[key])
 			pr = model.predict(X)
 			preds.append(pr)
@@ -254,9 +252,7 @@ class OpfSemble:
 
 		prototype = dict()
 		prototypes_scores = dict()        
-		print('self.ensemble.n_models={}'.format(self.ensemble.n_models))
 		for i in range(self.ensemble.n_models):
-			print('Fit len(proto)={}'.format(len(proto)))
 			for j in range(len(proto)):
 				if(i==proto[j]):      
 					item=self.ensemble.items[i]

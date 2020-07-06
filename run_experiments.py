@@ -24,8 +24,6 @@ def validation(classifiers_feats, X_valid, y_valid, voting='mode'):
 	results_validation=[]
 	for k in k_max:
 		opf_ens.fit_meta_model(classifiers_feats,k)
-		print('voting={}'.format(voting))
-		print('X_valid={}'.format(X_valid))
 		accuracy, f1 = computeMetrics(opf_ens.predict(X_valid, voting= voting),y_valid)
 		results_validation.append([k, accuracy, f1])
 		if f1>value_best_k:
@@ -83,7 +81,7 @@ def computeMetrics(y_pred, y_true):
 
 
 datasets = ['vertebral_column']
-n_models = [10,30]#,50,100]
+n_models = [10,30,50,100]
 
 #ds = sys.argv[1]
 
@@ -101,7 +99,7 @@ except IndexError:
 
 for ds in datasets:
 	for n in n_models:
-		for f in range(1,2):
+		for f in range(1,21):
 	
 			train = np.loadtxt('data/{}/{}/train.txt'.format(ds,f),delimiter=',', dtype=np.float32)
 			valid = np.loadtxt('data/{}/{}/valid.txt'.format(ds,f),delimiter=',', dtype=np.float32)
@@ -126,15 +124,9 @@ for ds in datasets:
 				ens = Ensemble(n_models=n, loading_path=os.path.join(model_path, str(n)))
 			else:
 				ens = None
-
-			if ens is not None:
-				for item in ens.items:
-					print(item.key)
-					
 			
 			start_time = time()
 			opf_ens = OpfSemble(n_models=n, n_folds=10, n_classes=n_classes, ensemble=ens)
-			print('opf_ens.ensemble.n_models={}'.format(opf_ens.ensemble.n_models))
 			new_x = opf_ens.fit(X, y)
 			end_time_initial = time() -start_time
 			voting = ['mode', 'average', 'intercluster','mode_best']
@@ -152,26 +144,26 @@ for ds in datasets:
 				end_time = time() -start_time
 				saveResults(pred_ensamble, X, y, y_test, best_k, validation_results, end_time+end_time_initial, ResultsPath, opf_ens.ensemble, ensemble_name='OPF_ENSEMBLE_{}'.format(vote), compute_models=vote=='mode',end_time_initial=end_time_initial,ResultsPath_baselines=ResultsPath_baselines)  
 
-			#ResultsPath_Sl = '{}/Super_Learner/{}/{}/{}'.format(results_folder,ds,f,n)
-			#if not os.path.exists(ResultsPath_Sl):
-			#    os.makedirs(ResultsPath_Sl)
+			ResultsPath_Sl = '{}/Super_Learner/{}/{}/{}'.format(results_folder,ds,f,n)
+			if not os.path.exists(ResultsPath_Sl):
+			    os.makedirs(ResultsPath_Sl)
 
-			#start_time = time()
-			#sl = SuperLearner(models=copy.deepcopy(opf_ens.ensemble), n_folds=10, type_='first')
-			#sl.fit(X, y)
-			#preds_super_learner = sl.predict(X_test)
-			#end_time = time() - start_time
+			start_time = time()
+			sl = SuperLearner(models=copy.deepcopy(opf_ens.ensemble), n_folds=10, type_='first')
+			sl.fit(X, y)
+			preds_super_learner = sl.predict(X_test)
+			end_time = time() - start_time
 
-			#saveResults(preds_super_learner, X, y, y_test, 0, np.asarray([[0, 0.0, 0.0]]), end_time, ResultsPath_Sl, sl.ensemble, ensemble_name='Super_Learner', compute_models=True)
+			saveResults(preds_super_learner, X, y, y_test, 0, np.asarray([[0, 0.0, 0.0]]), end_time, ResultsPath_Sl, sl.ensemble, ensemble_name='Super_Learner', compute_models=True)
 
-			#ResultsPath_Sl_Full = '{}/Super_Learner_Full/{}/{}/{}'.format(results_folder,ds,f,n)
-			#if not os.path.exists(ResultsPath_Sl_Full):
-			#    os.makedirs(ResultsPath_Sl_Full)
+			ResultsPath_Sl_Full = '{}/Super_Learner_Full/{}/{}/{}'.format(results_folder,ds,f,n)
+			if not os.path.exists(ResultsPath_Sl_Full):
+			    os.makedirs(ResultsPath_Sl_Full)
 
-			#start_time = time()
-			#sl_full = SuperLearner(models=copy.deepcopy(opf_ens.ensemble), n_folds=10)
-			#sl_full.fit(X, y)
-			#preds_super_learner_full = sl_full.predict(X_test)
-			#end_time = time() - start_time
+			start_time = time()
+			sl_full = SuperLearner(models=copy.deepcopy(opf_ens.ensemble), n_folds=10)
+			sl_full.fit(X, y)
+			preds_super_learner_full = sl_full.predict(X_test)
+			end_time = time() - start_time
 
-			#saveResults(preds_super_learner_full, X, y, y_test, 0, np.asarray([[0, 0.0, 0.0]]), end_time, ResultsPath_Sl_Full, sl_full.ensemble, ensemble_name='Super_Learner_Full', compute_models=True)
+			saveResults(preds_super_learner_full, X, y, y_test, 0, np.asarray([[0, 0.0, 0.0]]), end_time, ResultsPath_Sl_Full, sl_full.ensemble, ensemble_name='Super_Learner_Full', compute_models=True)

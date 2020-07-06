@@ -30,8 +30,6 @@ class Ensemble:
             KNN, Gradient Boosting, Random Forest and SVM
         """
 
-
-        print('n_models = {}'.format(n_models))
         self.n_models=n_models
         self.items = []
         

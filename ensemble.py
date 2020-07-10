@@ -2,6 +2,7 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import SVC
 from sklearn.naive_bayes import GaussianNB
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier, ExtraTreesClassifier
+from sklearn.neural_network import MLPClassifier
 from opfython.models.supervised import SupervisedOPF
 from ensemble_item import EnsembleItem
 import numpy as np
@@ -40,7 +41,7 @@ class Ensemble:
         if (not type(n_models) == int):
             raise Exception('The number of models must be an integer value!')
     
-        base_models_names = ['KNN', 'SVM', 'Random Forest', 'Gradient Boosting', 'Extra Trees']
+        base_models_names = ['KNN', 'SVM', 'Random Forest', 'Gradient Boosting', 'Extra Trees', 'MLP']
 #        self.n_models=n_models
 #        self.items = []
 
@@ -77,6 +78,12 @@ class Ensemble:
             elif(model == 'Extra Trees'):
                 self.items.append(EnsembleItem(model + '_' + str(id_model + 1),ExtraTreesClassifier(n_estimators=np.random.randint(10,500),
                                                                                  criterion=np.random.choice(['gini', 'entropy'], 1)[0])))
+            elif(model == 'MLP'):
+                self.items.append(EnsembleItem(model + '_' + str(id_model + 1),MLPClassifier(hidden_layer_sizes=(np.random.randint(10,300),),
+                															activation=np.random.choice(['logistic', 'tanh', 'relu'], 1)[0],
+                															solver=np.random.choice(['lbfgs', 'sgd', 'adam'], 1)[0],max_iter=300,
+                															early_stopping=True )))                                                                
+                                                                                 
             
         if (saving_path != None):
             self.save_models(os.path.join(saving_path, str(n_models)))

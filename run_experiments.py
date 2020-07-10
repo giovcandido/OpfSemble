@@ -81,7 +81,7 @@ def computeMetrics(y_pred, y_true):
 
 
 datasets = ['vertebral_column']
-n_models = [10,30,50,100]
+n_models = [10,30]
 
 #ds = sys.argv[1]
 
@@ -99,7 +99,7 @@ except IndexError:
 
 for ds in datasets:
 	for n in n_models:
-		for f in range(1,21):
+		for f in range(1,2):
 	
 			train = np.loadtxt('data/{}/{}/train.txt'.format(ds,f),delimiter=',', dtype=np.float32)
 			valid = np.loadtxt('data/{}/{}/valid.txt'.format(ds,f),delimiter=',', dtype=np.float32)
@@ -154,7 +154,7 @@ for ds in datasets:
 			preds_super_learner = sl.predict(X_test)
 			end_time = time() - start_time
 
-			saveResults(preds_super_learner, X, y, y_test, 0, np.asarray([[0, 0.0, 0.0]]), end_time, ResultsPath_Sl, sl.ensemble, ensemble_name='Super_Learner', compute_models=True)
+			saveResults(preds_super_learner, X, y, y_test, 0, np.asarray([[0, 0.0, 0.0]]), end_time, ResultsPath_Sl, sl.ensemble, ensemble_name='Super_Learner', compute_models=False)
 
 			ResultsPath_Sl_Full = '{}/Super_Learner_Full/{}/{}/{}'.format(results_folder,ds,f,n)
 			if not os.path.exists(ResultsPath_Sl_Full):
@@ -166,4 +166,4 @@ for ds in datasets:
 			preds_super_learner_full = sl_full.predict(X_test)
 			end_time = time() - start_time
 
-			saveResults(preds_super_learner_full, X, y, y_test, 0, np.asarray([[0, 0.0, 0.0]]), end_time, ResultsPath_Sl_Full, sl_full.ensemble, ensemble_name='Super_Learner_Full', compute_models=True)
+			saveResults(preds_super_learner_full, X, y, y_test, 0, np.asarray([[0, 0.0, 0.0]]), end_time, ResultsPath_Sl_Full, sl_full.ensemble, ensemble_name='Super_Learner_Full', compute_models=False)

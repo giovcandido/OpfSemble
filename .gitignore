@@ -1,4 +1,6 @@
 data/
+results/
+latex_tables/
 
 *.log
 

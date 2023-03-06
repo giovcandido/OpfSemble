@@ -48,6 +48,7 @@ class OpfSemble:
         else:        
             self.ensemble = Ensemble(n_models=n_models)
         
+        self.n_models = n_models
         self.n_folds = n_folds
         self.prototypes = None
         self.clusters = None
@@ -111,19 +112,25 @@ class OpfSemble:
                 model.fit(train_X, train_y)
                 yhat = model.predict(test_X)
                 item.score += f1_score(yhat, test_y, average='weighted')/self.n_folds
-                res = (yhat == test_y).astype(int)
+                #res = (yhat == test_y).astype(int)
                 # store columns
-                fold_res.append(res)
+                fold_res.append(yhat)
         
             # store fold yhats as columns
             meta_X = np.hstack([meta_X, vstack(fold_res)]) if meta_X.size else vstack(fold_res)
 
+        # Creating a new vector with the baseline predictions' counts for each class
+        new_x = np.zeros((self.n_models,self.n_classes))
+        for i,_ in enumerate(meta_X):
+            un,counts = np.unique(meta_X[i],return_counts=True)
+            for j,c in enumerate(un):
+                new_x[i,c] = counts[j]
+        
         # Check if Kullback-Lieber divergence should be calculated for the meta_X
         if self.divergence:
-            meta_X = self.__calculate_divergence(meta_X)
+            new_x = self.__calculate_divergence(new_x)
             
-        return meta_X
-
+        return new_x
 
     def predict(self, X, voting='mode'):
         """

@@ -80,6 +80,7 @@ def computeMetrics(y_pred, y_true):
     return accuracy, f1
 
 
+print('PERFORMING EXPERIMENTS WITH THE NEW META-DATA...')
 #datasets = ['vertebral_column']
 datasets = os.listdir('data')
 n_models = [10,30,50,100]

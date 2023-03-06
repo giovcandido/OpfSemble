@@ -124,6 +124,8 @@ class OpfSemble:
         for i,_ in enumerate(meta_X):
             un,counts = np.unique(meta_X[i],return_counts=True)
             for j,c in enumerate(un):
+                # Minimum label value must be 0 for the new_x indexing
+                c = c if np.min(un) == 0 else c - 1
                 new_x[i,c] = counts[j]
         
         # Check if Kullback-Lieber divergence should be calculated for the meta_X

@@ -103,7 +103,7 @@ except IndexError:
 
 for ds in datasets:
     for n in n_models:
-        for f in range(1,20):
+        for f in range(1,21):
     
             train = np.loadtxt('data/{}/{}/train.txt'.format(ds,f),delimiter=',', dtype=np.float32)
             valid = np.loadtxt('data/{}/{}/valid.txt'.format(ds,f),delimiter=',', dtype=np.float32)
@@ -134,7 +134,7 @@ for ds in datasets:
                 opf_ens = OpfSemble(n_models=n, n_folds=10, n_classes=n_classes, ensemble=ens, divergence=divergence[dv])
                 new_x = opf_ens.fit(X, y)
                 end_time_initial = time() -start_time
-                voting = ['mode', 'average', 'intercluster','mode_best', 'intracluster']
+                voting = ['mode', 'average', 'intercluster','mode_best', 'intracluster', 'aggregation']
                 
                 for vote in voting:                    
                     ResultsPath = '{}/OPF_Ensemble_{}/{}/{}/{}/{}'.format(results_folder,dv,vote,ds,f,n)

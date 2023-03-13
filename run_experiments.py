@@ -90,6 +90,7 @@ divergence = {'nodivergence':False,'divergence':True}
 #ds = sys.argv[1]
 
 results_folder = 'Results_new'
+ResultsPath_baselines = None
 
 try:
     model_path = sys.argv[2]
@@ -134,10 +135,11 @@ for ds in datasets:
                 opf_ens = OpfSemble(n_models=n, n_folds=10, n_classes=n_classes, ensemble=ens, divergence=divergence[dv])
                 new_x = opf_ens.fit(X, y)
                 end_time_initial = time() -start_time
-                voting = ['mode', 'average', 'intercluster','mode_best', 'intracluster', 'aggregation']
+                voting = ['mode', 'average', 'intercluster','mode_best', 'intracluster', 'aggregation']                
                 
                 for vote in voting:                    
-                    ResultsPath = '{}/OPF_Ensemble_{}/{}/{}/{}/{}'.format(results_folder,dv,vote,ds,f,n)
+                    ResultsPath = '{}/OPF_Ensemble_{}/{}/{}/{}/{}'.format(results_folder,dv,vote,ds,f,n)                    
+
                     if not os.path.exists(ResultsPath):
                         os.makedirs(ResultsPath)
                     elif os.path.exists('{}/results.txt'.format(ResultsPath)):
@@ -145,7 +147,7 @@ for ds in datasets:
                         continue
 
                     if vote=='mode':
-                        ResultsPath_baselines = '{}/Baselines_{}/{}/{}/{}/{}'.format(results_folder,'baseline',dv,ds,f,n)
+                        ResultsPath_baselines = '{}/Baselines_{}/{}/{}/{}/{}'.format(results_folder,'baseline',dv,ds,f,n)                                   
                         if not os.path.exists(ResultsPath_baselines):
                             os.makedirs(ResultsPath_baselines)
                         elif os.path.exists('{}/results.txt'.format(ResultsPath_baselines)):
@@ -160,7 +162,7 @@ for ds in datasets:
             ResultsPath_Sl = '{}/Super_Learner/{}/{}/{}'.format(results_folder,ds,f,n)
             if not os.path.exists(ResultsPath_Sl):
                 os.makedirs(ResultsPath_Sl)
-            elif os.path..exists('{}/results.txt'.format(ResultsPath_Sl)):
+            elif os.path.exists('{}/results.txt'.format(ResultsPath_Sl)):
                 print('Folder {} already exists with all the validation metrics...'.format(ResultsPath_Sl))
                 continue
 
@@ -175,7 +177,7 @@ for ds in datasets:
             ResultsPath_Sl_Full = '{}/Super_Learner_Full/{}/{}/{}'.format(results_folder,ds,f,n)
             if not os.path.exists(ResultsPath_Sl_Full):
                 os.makedirs(ResultsPath_Sl_Full)
-            elif os.path..exists('{}/results.txt'.format(ResultsPath_Sl_Full)):
+            elif os.path.exists('{}/results.txt'.format(ResultsPath_Sl_Full)):
                 print('Folder {} already exists with all the validation metrics...'.format(ResultsPath_Sl_Full))
                 continue
 

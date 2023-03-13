@@ -148,6 +148,7 @@ class OpfSemble:
         else:
             new_x = np.copy(meta_X)
         
+        print('NEW_X: ',new_x)
         # Check if Kullback-Lieber divergence should be calculated for the meta_X
         if self.divergence:
             new_x = self.__calculate_divergence(new_x)

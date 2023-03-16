@@ -355,15 +355,26 @@ class OpfSemble:
         
         # calculate the kl divergence
         def kl_divergence(p, q):
-            return sum(p[i] * math.log2(p[i]/q[i]) for i in range(len(p)))        
-
+            return np.sum(np.where(p != 0, p * np.log(p / q), 0))
+            
         kl_array = np.zeros((X.shape[0],X.shape[0]))
         for i in range(X.shape[0]):
             for j in range(X.shape[0]):
-                c1, _ = np.histogram(X[i,:], bins=2)
-                c2, _ = np.histogram(X[j,:], bins=2)
+                # Getting the maximum value between the two arrays
+                max_ = max(np.max(X[i,:]),np.max(X[j,:]))
+                c1, _ = np.histogram(X[i,:], bins=np.arange(max_+2))
+                c2, _ = np.histogram(X[j,:], bins=np.arange(max_+2))
                 p = c1 / X.shape[1]
                 q = c2 / X.shape[1]
                 kl_array[i,j] = kl_divergence(p,q)
+
+        # Correction of infinity values
+        inf_value = 10
+        un = np.unique(kl_array)
+        
+        if (un[-2] == 0): # [0, inf]
+            kl_array[kl_array == np.inf] = inf_value
+        else: # [0, value, inf]
+            kl_array[kl_array == np.inf] = un[-2] * inf_value
         
         return kl_array

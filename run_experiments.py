@@ -80,6 +80,7 @@ def computeMetrics(y_pred, y_true):
     return accuracy, f1
 
 
+print('PERFORMING EXPERIMENTS WITH THE NEW META-DATA...')
 #datasets = ['vertebral_column']
 datasets = os.listdir('data')
 n_models = [10,30,50,100]
@@ -89,6 +90,7 @@ divergence = {'nodivergence':False,'divergence':True}
 #ds = sys.argv[1]
 
 results_folder = 'Results_new'
+ResultsPath_baselines = None
 
 try:
     model_path = sys.argv[2]
@@ -102,7 +104,7 @@ except IndexError:
 
 for ds in datasets:
     for n in n_models:
-        for f in range(1,20):
+        for f in range(1,21):
     
             train = np.loadtxt('data/{}/{}/train.txt'.format(ds,f),delimiter=',', dtype=np.float32)
             valid = np.loadtxt('data/{}/{}/valid.txt'.format(ds,f),delimiter=',', dtype=np.float32)
@@ -133,16 +135,24 @@ for ds in datasets:
                 opf_ens = OpfSemble(n_models=n, n_folds=10, n_classes=n_classes, ensemble=ens, divergence=divergence[dv])
                 new_x = opf_ens.fit(X, y)
                 end_time_initial = time() -start_time
-                voting = ['mode', 'average', 'intercluster','mode_best', 'intracluster']
+                voting = ['mode', 'average', 'intercluster','mode_best', 'intracluster', 'aggregation']                
                 
                 for vote in voting:                    
-                    ResultsPath = '{}/OPF_Ensemble_{}/{}/{}/{}/{}'.format(results_folder,dv,vote,ds,f,n)
+                    ResultsPath = '{}/OPF_Ensemble_{}/{}/{}/{}/{}'.format(results_folder,dv,vote,ds,f,n)                    
+
                     if not os.path.exists(ResultsPath):
                         os.makedirs(ResultsPath)
+                    elif os.path.exists('{}/results.txt'.format(ResultsPath)):
+                        print('Folder {} already exists with all the validation metrics...'.format(ResultsPath))
+                        continue
+
                     if vote=='mode':
-                        ResultsPath_baselines = '{}/Baselines_{}/{}/{}/{}/{}'.format(results_folder,'baseline',dv,ds,f,n)
+                        ResultsPath_baselines = '{}/Baselines_{}/{}/{}/{}/{}'.format(results_folder,'baseline',dv,ds,f,n)                                   
                         if not os.path.exists(ResultsPath_baselines):
                             os.makedirs(ResultsPath_baselines)
+                        elif os.path.exists('{}/results.txt'.format(ResultsPath_baselines)):
+                            print('Folder {} already exists with all the validation metrics...'.format(ResultsPath_baselines))
+                            continue
     
                     start_time = time()
                     pred_ensamble, best_k, validation_results = run(new_x, X_test, X_valid, y_valid, voting = vote)
@@ -152,6 +162,9 @@ for ds in datasets:
             ResultsPath_Sl = '{}/Super_Learner/{}/{}/{}'.format(results_folder,ds,f,n)
             if not os.path.exists(ResultsPath_Sl):
                 os.makedirs(ResultsPath_Sl)
+            elif os.path.exists('{}/results.txt'.format(ResultsPath_Sl)):
+                print('Folder {} already exists with all the validation metrics...'.format(ResultsPath_Sl))
+                continue
 
             start_time = time()
             sl = SuperLearner(models=copy.deepcopy(opf_ens.ensemble), n_folds=10, type_='first')
@@ -164,6 +177,9 @@ for ds in datasets:
             ResultsPath_Sl_Full = '{}/Super_Learner_Full/{}/{}/{}'.format(results_folder,ds,f,n)
             if not os.path.exists(ResultsPath_Sl_Full):
                 os.makedirs(ResultsPath_Sl_Full)
+            elif os.path.exists('{}/results.txt'.format(ResultsPath_Sl_Full)):
+                print('Folder {} already exists with all the validation metrics...'.format(ResultsPath_Sl_Full))
+                continue
 
             start_time = time()
             sl_full = SuperLearner(models=copy.deepcopy(opf_ens.ensemble), n_folds=10)

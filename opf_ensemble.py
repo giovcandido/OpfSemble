@@ -31,23 +31,36 @@ class OpfSemble:
     A class which implements the OPF Ensemble Learning.
     """
 
-    def __init__(self, n_models=10, n_folds=10,n_classes=0,ensemble=None,divergence=False):
+    def __init__(self, n_models=10, n_folds=10,n_classes=0,ensemble=None,meta_data_mode='count_class',divergence=False):
         """
         Initialization of the class properties.
 
         Parameters
         ----------
         n_models: int
-            - The number of models to be created. Default is 10
+            The number of models to be created. Default is 10
         n_folds: int
-            - The number of folds of the cross validation
+            The number of folds of the cross validation. Default is 10
+        n_classes: int
+            The number of classes in the dataset. It is usually automatically determined in the fitting of the model. Default is 0        
+        ensemble: list
+            A list with the baseline classifiers of the ensemble model. If not specified, a random list will be created according to n_models. Default is None
+        meta_data_model: str
+            The approach to create the meta-data from the cross validation predictions. Default is 'count_class'
+        divergence: bool
+            It specifies whether to apply or not the Kullback-Lieber divergence on the meta-data. Default is False
         """
-        
+
+        # Check for a valid meta_data_mode
+        if (not meta_data_mode in ['oracle','count_class']):
+            raise SystemExit('Value for the meta_data_mode is not valid. Please inform one of the following mode: ',['oracle','count_class'])
+
         if (ensemble != None):
             self.ensemble = ensemble
         else:        
             self.ensemble = Ensemble(n_models=n_models)
         
+        self.n_models = n_models
         self.n_folds = n_folds
         self.prototypes = None
         self.clusters = None
@@ -55,6 +68,7 @@ class OpfSemble:
         self.n_classes = n_classes
 
         self.ensemble
+        self.meta_data_mode = meta_data_mode
         self.divergence = divergence
 
     # create a list of base-models
@@ -111,19 +125,35 @@ class OpfSemble:
                 model.fit(train_X, train_y)
                 yhat = model.predict(test_X)
                 item.score += f1_score(yhat, test_y, average='weighted')/self.n_folds
-                res = (yhat == test_y).astype(int)
+                if (self.meta_data_mode=='oracle'):
+                    res = np.copy((yhat == test_y).astype(int))
+                else:
+                    res = np.copy(yhat)
+
                 # store columns
                 fold_res.append(res)
         
             # store fold yhats as columns
             meta_X = np.hstack([meta_X, vstack(fold_res)]) if meta_X.size else vstack(fold_res)
 
+        if (self.meta_data_mode=='count_class'):
+            # Creating a new vector with the baseline predictions' counts for each class
+            new_x = np.zeros((self.n_models,self.n_classes))
+            for i,_ in enumerate(meta_X):
+                un,counts = np.unique(meta_X[i],return_counts=True)
+                for j,c in enumerate(un):
+                    # Minimum label value must be 0 for the new_x indexing
+                    c = c if np.min(un) == 0 else c - 1
+                    new_x[i,c] = counts[j]
+        else:
+            new_x = np.copy(meta_X)
+        
+        print('NEW_X: ',new_x)
         # Check if Kullback-Lieber divergence should be calculated for the meta_X
         if self.divergence:
-            meta_X = self.__calculate_divergence(meta_X)
+            new_x = self.__calculate_divergence(new_x)
             
-        return meta_X
-
+        return new_x
 
     def predict(self, X, voting='mode'):
         """
@@ -134,7 +164,7 @@ class OpfSemble:
         X: array
             A 2D array with the testing/validation set
         voting: array
-            A string representing the voting approach (either mode or average)
+            A string representing the voting approach ('intracluster','mode','average','intercluster','mode_best' or 'aggregation')
 
         Returns
         -------
@@ -143,10 +173,15 @@ class OpfSemble:
         """
 
         if self.prototypes is None:
-            raise Exception('Meta model was not fitted!')
+            raise SystemExit('Meta model was not fitted!')
             
         if self.clusters is None:
-            raise Exception('No cluster is defined! It might be happened because the model is not fitted yet!')
+            raise SystemExit('No cluster is defined! It might be happened because the model is not fitted yet!')
+
+        voting_options = ['intracluster','mode','average','intercluster','mode_best','aggregation']
+
+        if (not voting in voting_options):
+            raise SystemExit('The informed voting for predict is not compatible with a valid option. Please, inform one of the following options: ',voting_options)
 
         if voting=='intracluster':
             # Predictions from the classifiers belonging to the protopype with the highest F1-score
@@ -249,6 +284,16 @@ class OpfSemble:
                 preds_best_cluster= np.asarray(preds_best_cluster)
                 pred, _ = mode(preds_best_cluster, axis=0)
                 pred = pred[0]
+            elif voting=='aggregation': # aggregation of all voting methods
+                voting_methods = [v for v in voting_options if v != 'aggregation']
+                preds = list()
+
+                # Get predictions from all the voting methods
+                for v in voting_methods:
+                    preds.append(self.predict(X,voting=v).reshape(-1,1))
+
+                #print(np.asarray(preds))
+                pred = mode(np.asarray(preds),axis=0)[0][0]
 
         return pred
 
@@ -261,7 +306,10 @@ class OpfSemble:
         ----------
         X: array
             A 2D array with the classifiers attributes
+        k_max: int
+            The value of k_max for the Unsupervised OPF
         """
+        
         opf_unsup = UnsupervisedOPF(max_k=k_max)
         opf_unsup.fit(X)
 
@@ -307,15 +355,26 @@ class OpfSemble:
         
         # calculate the kl divergence
         def kl_divergence(p, q):
-            return sum(p[i] * math.log2(p[i]/q[i]) for i in range(len(p)))        
-
+            return np.sum(np.where(p != 0, p * np.log(p / q), 0))
+            
         kl_array = np.zeros((X.shape[0],X.shape[0]))
         for i in range(X.shape[0]):
             for j in range(X.shape[0]):
-                c1, _ = np.histogram(X[i,:], bins=2)
-                c2, _ = np.histogram(X[j,:], bins=2)
+                # Getting the maximum value between the two arrays
+                max_ = max(np.max(X[i,:]),np.max(X[j,:]))
+                c1, _ = np.histogram(X[i,:], bins=np.arange(max_+2))
+                c2, _ = np.histogram(X[j,:], bins=np.arange(max_+2))
                 p = c1 / X.shape[1]
                 q = c2 / X.shape[1]
                 kl_array[i,j] = kl_divergence(p,q)
+
+        # Correction of infinity values
+        inf_value = 10
+        un = np.unique(kl_array)
+        
+        if (un[-2] == 0): # [0, inf]
+            kl_array[kl_array == np.inf] = inf_value
+        else: # [0, value, inf]
+            kl_array[kl_array == np.inf] = un[-2] * inf_value
         
         return kl_array

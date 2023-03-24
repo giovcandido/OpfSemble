@@ -8,3 +8,4 @@ latex_tables/
 __pycache__
 models
 Results_test
+test.py

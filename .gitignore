@@ -1,6 +1,11 @@
 data/
+results/
+latex_tables/
 
 *.log
 
 .ipynb_checkpoints
 __pycache__
+models
+Results_test
+test.py

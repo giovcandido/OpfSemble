@@ -110,4 +110,45 @@ def paired_q_matrix(preds):
         for j in range(i, preds.shape[1]):
             res[i, j] = paired_q(preds, i, j)
             res[j, i] = res[i, j]
-    return res    
+    return res
+
+def kl_divergence_matrix(preds):
+    '''
+    Function that performs the Kullback-Lieber divergence between each pair of samples in 'preds'
+
+    Parameters
+    ----------
+    preds : array
+        Array with N rows and M columns.
+
+    Returns
+    -------
+    kl_array: array
+        An array with size NxN with the KL divergence between the pairs of samples in 'preds'
+    '''
+    
+    # calculate the kl divergence
+    def kl_divergence(p, q):
+        return np.sum(np.where(p != 0, p * np.log(p / q), 0))
+        
+    kl_array = np.zeros((preds.shape[0],preds.shape[0]))
+    for i in range(preds.shape[0]):
+        for j in range(preds.shape[0]):
+            # Getting the maximum value between the two arrays
+            max_ = max(np.max(preds[i,:]),np.max(preds[j,:]))
+            c1, _ = np.histogram(preds[i,:], bins=np.arange(max_+2))
+            c2, _ = np.histogram(preds[j,:], bins=np.arange(max_+2))
+            p = c1 / preds.shape[1]
+            q = c2 / preds.shape[1]
+            kl_array[i,j] = kl_divergence(p,q)
+
+    # Correction of infinity values
+    inf_value = 10
+    un = np.unique(kl_array)
+    
+    if (un[-2] == 0): # [0, inf]
+        kl_array[kl_array == np.inf] = inf_value
+    else: # [0, value, inf]
+        kl_array[kl_array == np.inf] = un[-2] * inf_value
+    
+    return kl_array    

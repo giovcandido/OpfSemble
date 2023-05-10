@@ -18,7 +18,7 @@ from scipy.stats import mode
 from opfython.models.unsupervised import UnsupervisedOPF
 from ensemble import Ensemble
 from sklearn.metrics import accuracy_score,f1_score
-from divergence_measures import disagreement_matrix,paired_q_matrix
+from divergence_measures import disagreement_matrix,paired_q_matrix,kl_divergence_matrix
 from collections import defaultdict
 import math
 import numpy as np
@@ -32,7 +32,7 @@ class OpfSemble:
     A class which implements the OPF Ensemble Learning.
     """
 
-    def __init__(self, n_models=10, n_folds=10,n_classes=0,ensemble=None,meta_data_mode='count_class',divergence=False):
+    def __init__(self, n_models=10, n_folds=10,n_classes=0,ensemble=None,meta_data_mode='count_class',divergence=None):
         """
         Initialization of the class properties.
 
@@ -55,6 +55,10 @@ class OpfSemble:
         # Check for a valid meta_data_mode
         if (not meta_data_mode in ['oracle','count_class']):
             raise SystemExit('Value for the meta_data_mode is not valid. Please inform one of the following mode: ',['oracle','count_class'])
+
+        # Check for a valid divergence metric
+        if (not divergence in [None,'yule','disagreement','kullback-lieber']):
+            raise SystemExit('Divergence metric must be one of the following: yule, disagreement,kullback-lieber')            
 
         if (ensemble != None):
             self.ensemble = ensemble
@@ -149,12 +153,14 @@ class OpfSemble:
         else:
             new_x = np.copy(meta_X)
         
-        print('NEW_X: ',new_x)
-        # Check if Kullback-Lieber divergence should be calculated for the meta_X
-        if self.divergence:
-            #new_x = self.__calculate_divergence(new_x)
-            new_x = paired_q_matrix(new_x.T)
-            #new_x = disagreement_matrix(new_x.T)
+        # Apply divergence (or not) to meta_X
+        if not self.divergence is None:
+            if self.divergence=='yule':
+                new_x = paired_q_matrix(new_x.T)
+            elif self.divergence=='disagreement':
+                new_x = disagreement_matrix(new_x.T)
+            elif self.divergence=='kullback-lieber':
+                new_x = kl_divergence_matrix(new_x)
             
         return new_x
 
@@ -433,45 +439,4 @@ class OpfSemble:
             np.savetxt('{}/clusters.txt'.format(path),clusters,fmt='%s',delimiter=',',header='cluster_id,clusters')
             np.savetxt('{}/prototypes.txt'.format(path),prototypes,fmt='%s',delimiter=',',header='prototype,MAE')
         except:
-            raise SystemExit('Something went wrong while saving the clusters and prototypes!')        
-
-    def __calculate_divergence(self,X):
-        '''
-        Function that performs the Kullback-Lieber divergence between each pair of samples in X
-
-        Parameters
-        ----------
-        X : array
-            Array with N rows and M columns.
-
-        Returns
-        -------
-        array
-            An array with size NxN with the KL divergence between the pairs of samples in X.
-        '''
-        
-        # calculate the kl divergence
-        def kl_divergence(p, q):
-            return np.sum(np.where(p != 0, p * np.log(p / q), 0))
-            
-        kl_array = np.zeros((X.shape[0],X.shape[0]))
-        for i in range(X.shape[0]):
-            for j in range(X.shape[0]):
-                # Getting the maximum value between the two arrays
-                max_ = max(np.max(X[i,:]),np.max(X[j,:]))
-                c1, _ = np.histogram(X[i,:], bins=np.arange(max_+2))
-                c2, _ = np.histogram(X[j,:], bins=np.arange(max_+2))
-                p = c1 / X.shape[1]
-                q = c2 / X.shape[1]
-                kl_array[i,j] = kl_divergence(p,q)
-
-        # Correction of infinity values
-        inf_value = 10
-        un = np.unique(kl_array)
-        
-        if (un[-2] == 0): # [0, inf]
-            kl_array[kl_array == np.inf] = inf_value
-        else: # [0, value, inf]
-            kl_array[kl_array == np.inf] = un[-2] * inf_value
-        
-        return kl_array
+            raise SystemExit('Something went wrong while saving the clusters and prototypes!')

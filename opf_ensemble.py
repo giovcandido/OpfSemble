@@ -17,7 +17,8 @@ from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from scipy.stats import mode
 from opfython.models.unsupervised import UnsupervisedOPF
 from ensemble import Ensemble
-from sklearn.metrics import f1_score
+from sklearn.metrics import accuracy_score,f1_score
+from divergence_measures import disagreement_matrix,paired_q_matrix
 from collections import defaultdict
 import math
 import numpy as np
@@ -151,7 +152,9 @@ class OpfSemble:
         print('NEW_X: ',new_x)
         # Check if Kullback-Lieber divergence should be calculated for the meta_X
         if self.divergence:
-            new_x = self.__calculate_divergence(new_x)
+            #new_x = self.__calculate_divergence(new_x)
+            new_x = paired_q_matrix(new_x.T)
+            #new_x = disagreement_matrix(new_x.T)
             
         return new_x
 
@@ -337,6 +340,100 @@ class OpfSemble:
         self.prototypes =  prototype        
         self.prototypes_scores =  prototypes_scores
         self.clusters = clusters
+
+    def get_scores_baselines(self,X,y,path=None):
+        '''
+            Function that computes the accuracy and the F1-score from each baseline regression model that compound the ensemble.
+
+            Parameters
+            ----------
+            X : array
+                Array with the samples to be predicted
+            y : array
+                Array with output values of each test sample
+            path: str
+                Path to the folder where the baseline results will be saved. Default is None
+
+            Returns
+            -------
+            scores : dictionary
+                A dictionary where each key is the baseline model's name and the value is a list with the MAE and MSE computed from the model
+        '''
+
+        scores = {}
+        average_f1 = 'binary'
+
+        # Assigning the F1 average based on the number of classes
+        n_classes = len(np.unique(y))
+
+        if (n_classes > 2):
+            average_f1 = 'macro'
+
+        for item in self.ensemble.items:
+            model = item.classifier
+            y_pred = model.predict(X)
+            scores[item.key] = [accuracy_score(y,y_pred),f1_score(y,y_pred,average=average_f1)]
+
+        # Save the baseline results if 'path' is not None
+        if (not path is None):
+            final_list = []
+            for key in scores:
+                aux = []
+                model = key
+                aux.append(model)
+                arr = np.array(scores[key])
+
+                for j in range(len(arr)):
+                    aux.append(arr[j])
+
+                final_list.append(aux)
+            
+            scores_baselines = np.array(final_list,dtype=object)
+            np.savetxt('{}/results.txt'.format(path),scores_baselines,fmt='%s',delimiter=',',header='Model,Accuracy,F1-Score') 
+
+        return scores        
+
+    def save_clusters(self,path):
+        '''
+            Function that saves a text file with the clusters defined by the unsupervised OPF.
+
+            Parameters
+            ----------
+            path: str
+                Path to the folder where file will be saved.
+
+            Returns
+            -------
+                None
+        '''
+
+        if (self.clusters is None):
+            raise SystemExit('It is not possible to save the clusters because they are not defined yet! It might be happened because the model is not fitted yet!')
+        
+        import os
+
+        # Auxiliary variables
+        clusters = []
+        prototypes = []
+
+        for c in self.clusters:
+            clusters.append([c,self.clusters[c]])
+
+        for p in self.prototypes_scores:
+            prototypes.append([p,self.prototypes_scores[p]])
+
+        print('Saving the OPF clusters and their prototypes...')
+        clusters = np.array(clusters,dtype=object)
+        prototypes = np.array(prototypes,dtype=object)
+
+        if (not os.path.exists(path)):
+            os.makedirs(path)
+
+        try:
+            np.savetxt('{}/clusters.txt'.format(path),clusters,fmt='%s',delimiter=',',header='cluster_id,clusters')
+            np.savetxt('{}/prototypes.txt'.format(path),prototypes,fmt='%s',delimiter=',',header='prototype,MAE')
+        except:
+            raise SystemExit('Something went wrong while saving the clusters and prototypes!')        
 
     def __calculate_divergence(self,X):
         '''

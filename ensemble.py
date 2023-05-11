@@ -107,4 +107,11 @@ class Ensemble:
         models = os.listdir(path)
         
         for model in models:
-            self.items.append(EnsembleItem(model.split('.')[0], pickle.load(open(os.path.join(path,model), 'rb'))))
+            m = deepcopy(pickle.load(open(os.path.join(path,model), 'rb')))
+
+            # limit the number of iterations of the SVM model with polynomial kernel
+            # it is important to avoid an 'endless' fitting of the model
+            if (isinstance(m,SVC) and m.kernel=='poly'):
+                m.max_iter=100000
+
+            self.items.append(EnsembleItem(model.split('.')[0], m))

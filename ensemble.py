@@ -5,6 +5,7 @@ from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier,
 from sklearn.neural_network import MLPClassifier
 from opfython.models.supervised import SupervisedOPF
 from ensemble_item import EnsembleItem
+from copy import deepcopy
 import numpy as np
 import sys
 import os

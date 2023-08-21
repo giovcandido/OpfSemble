@@ -153,8 +153,8 @@ class OpfSemble:
         else:
             new_x = np.copy(meta_X)
         
-        # Apply divergence (or not) to meta_X
-        if not self.divergence is None:
+        # Apply divergence (or not) to meta_X (only if meta_data_mode is oracle)
+        if (not self.divergence is None and self.meta_data_mode=='oracle'):
             if self.divergence=='yule':
                 new_x = paired_q_matrix(new_x.T)
             elif self.divergence=='disagreement':
@@ -436,7 +436,7 @@ class OpfSemble:
             os.makedirs(path)
 
         try:
-            np.savetxt('{}/clusters.txt'.format(path),clusters,fmt='%s',delimiter=',',header='cluster_id,clusters')
-            np.savetxt('{}/prototypes.txt'.format(path),prototypes,fmt='%s',delimiter=',',header='prototype,MAE')
+            np.savetxt('{}/clusters.txt'.format(path),clusters,fmt='%s',delimiter=';',header='cluster_id,clusters')
+            np.savetxt('{}/prototypes.txt'.format(path),prototypes,fmt='%s',delimiter=',',header='prototype,F1')
         except:
             raise SystemExit('Something went wrong while saving the clusters and prototypes!')

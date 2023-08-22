@@ -142,7 +142,7 @@ if __name__ == '__main__':
                         opf_ens.n_folds=n_folds_ensemble
                         opf_ens.divergence=divergence[dv]
                         opf_ens.ensemble = ens
-                        opf_ens.meta_data_mode = meta
+                        opf_ens.meta_data_mode = meta_data_type[meta]
 
                         # Creates the stacking generalization model
                         stacking = SuperLearner(deepcopy(opf_ens.ensemble),n_folds=n_folds_ensemble)
@@ -196,7 +196,7 @@ if __name__ == '__main__':
                         for v in opf_variants:
                             print('OPF variant: ',v)
                             # Check if the output folder exists
-                            if (meta=='count_class'):
+                            if (meta=='countclass'):
                                 output_folder = '{}/{}/{}/{}/{}/{}'.format(results_folder,'opf_{}'.format(meta),v,d,f,n)
                             else:
                                 output_folder = '{}/{}/{}/{}/{}/{}'.format(results_folder,'opf_{}'.format(dv),v,d,f,n)

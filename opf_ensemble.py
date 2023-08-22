@@ -108,6 +108,10 @@ class OpfSemble:
             A column array with the labels of each samples in X        
         """
 
+        # Check for a valid meta_data_mode
+        if (not self.meta_data_mode in ['oracle','count_class']):
+            raise SystemExit('Value for the meta_data_mode is not valid. Please inform one of the following mode: ',['oracle','count_class'])        
+
         meta_X = np.array([], dtype=int)
         if self.n_classes==0:
             self.n_classes = len(np.unique(y))

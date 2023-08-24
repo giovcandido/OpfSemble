@@ -137,6 +137,27 @@ if __name__ == '__main__':
                         else:
                             ens = None
 
+                        # Checks if the model's results folders already exist
+                        baseline_results = '{}/{}/{}/{}/{}/results.txt'.format(results_folder,'baseline',d,f,n)
+                        stacking_results = '{}/{}/{}/{}/{}/results.txt'.format(results_folder,'stacking_generalization',d,f,n)
+                        folders_existence = False
+                        
+                        for v in opf_variants:
+                            if (meta=='countclass'):
+                                opfsemble_results = '{}/{}/{}/{}/{}/{}/results.txt'.format(results_folder,'opf_{}'.format(meta),v,d,f,n)
+                            else:
+                                opfsemble_results = '{}/{}/{}/{}/{}/{}/results.txt'.format(results_folder,'opf_{}'.format(dv),v,d,f,n)
+                            
+                            if (os.path.exists(baseline_results) and os.path.exists(stacking_results) and os.path.exists(opfsemble_results)):
+                                folders_existence = True
+                            else:
+                                folders_existence = False
+                                break
+                            
+                        if (folders_existence):
+                            print('Folders of all models already exist with the validation metrics. Moving to the next fold...')
+                            continue
+
                         # Assigns the OPFsemble's parameters
                         opf_ens.n_models=n
                         opf_ens.n_folds=n_folds_ensemble

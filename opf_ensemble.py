@@ -61,18 +61,22 @@ class OpfSemble:
             raise SystemExit('Divergence metric must be one of the following: yule, disagreement,kullback-lieber')            
 
         if (ensemble != None):
-            self.ensemble = ensemble
+            if (type(ensemble) == Ensemble):
+                print('Build ensemble from an Ensemble object...')
+                self.ensemble = ensemble
+            elif(type(ensemble) == list):
+                print('Build ensemble from a list of pre-defined classifiers...')                 
+                self.ensemble = Ensemble(n_models=len(ensemble),models=ensemble)
         else:        
             self.ensemble = Ensemble(n_models=n_models)
         
-        self.n_models = n_models
+        self.n_models = len(self.ensemble.items)
         self.n_folds = n_folds
         self.prototypes = None
         self.clusters = None
         self.prototypes_scores = None
         self.n_classes = n_classes
 
-        self.ensemble
         self.meta_data_mode = meta_data_mode
         self.divergence = divergence
 

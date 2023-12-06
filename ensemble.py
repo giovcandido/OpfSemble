@@ -19,7 +19,7 @@ class Ensemble:
     A class which creates the models for the ensemble learning.
     """
 
-    def __init__(self, n_models=10, loading_path=None, saving_path=None):
+    def __init__(self, n_models=10, models=None, loading_path=None, saving_path=None):
         """
         Initialization of the following properties:
             - n_models: the number of models to be created
@@ -34,6 +34,14 @@ class Ensemble:
 
         self.n_models=n_models
         self.items = []
+
+        if (models != None):
+            # Check if the list contains at least one baseline classifier
+            if (len(models) < 2):
+                raise SystemExit('The models list must have at least two baseline classifiers!') 
+
+            self.build_ensemble_items(models)
+            return
         
         if (loading_path != None):            
             self.load_models(loading_path)
@@ -88,6 +96,12 @@ class Ensemble:
             
         if (saving_path != None):
             self.save_models(os.path.join(saving_path, str(n_models)))
+    
+    def build_ensemble_items(self, models):
+        # Build the ensemble with a list of pre-defined classifiers
+        for i,model in enumerate(models):
+            model_name = model.__class__.__name__
+            self.items.append(EnsembleItem('{}_{}'.format(model_name,i+1),deepcopy(model)))
             
     def save_models(self, path):
         if (len(self.items) == 0):

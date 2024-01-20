@@ -61,18 +61,22 @@ class OpfSemble:
             raise SystemExit('Divergence metric must be one of the following: yule, disagreement,kullback-lieber')            
 
         if (ensemble != None):
-            self.ensemble = ensemble
+            if (type(ensemble) == Ensemble):
+                print('Build ensemble from an Ensemble object...')
+                self.ensemble = ensemble
+            elif(type(ensemble) == list):
+                print('Build ensemble from a list of pre-defined classifiers...')                 
+                self.ensemble = Ensemble(n_models=len(ensemble),models=ensemble)
         else:        
             self.ensemble = Ensemble(n_models=n_models)
         
-        self.n_models = n_models
+        self.n_models = len(self.ensemble.items)
         self.n_folds = n_folds
         self.prototypes = None
         self.clusters = None
         self.prototypes_scores = None
         self.n_classes = n_classes
 
-        self.ensemble
         self.meta_data_mode = meta_data_mode
         self.divergence = divergence
 
@@ -107,6 +111,10 @@ class OpfSemble:
         y: array
             A column array with the labels of each samples in X        
         """
+
+        # Check for a valid meta_data_mode
+        if (not self.meta_data_mode in ['oracle','count_class']):
+            raise SystemExit('Value for the meta_data_mode is not valid. Please inform one of the following mode: ',['oracle','count_class'])        
 
         meta_X = np.array([], dtype=int)
         if self.n_classes==0:
@@ -153,8 +161,8 @@ class OpfSemble:
         else:
             new_x = np.copy(meta_X)
         
-        # Apply divergence (or not) to meta_X
-        if not self.divergence is None:
+        # Apply divergence (or not) to meta_X (only if meta_data_mode is oracle)
+        if (not self.divergence is None and self.meta_data_mode=='oracle'):
             if self.divergence=='yule':
                 new_x = paired_q_matrix(new_x.T)
             elif self.divergence=='disagreement':
@@ -436,7 +444,7 @@ class OpfSemble:
             os.makedirs(path)
 
         try:
-            np.savetxt('{}/clusters.txt'.format(path),clusters,fmt='%s',delimiter=',',header='cluster_id,clusters')
-            np.savetxt('{}/prototypes.txt'.format(path),prototypes,fmt='%s',delimiter=',',header='prototype,MAE')
+            np.savetxt('{}/clusters.txt'.format(path),clusters,fmt='%s',delimiter=';',header='cluster_id,clusters')
+            np.savetxt('{}/prototypes.txt'.format(path),prototypes,fmt='%s',delimiter=',',header='prototype,F1')
         except:
             raise SystemExit('Something went wrong while saving the clusters and prototypes!')

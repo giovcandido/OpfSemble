@@ -12,10 +12,6 @@ from scipy.stats import mode
 from sklearn.metrics import accuracy_score, f1_score
 np.set_printoptions(threshold=sys.maxsize)
 
-if len(sys.argv) <= 1:
-    print('Usage: %s <dataset name>' % sys.argv[0])
-    raise SystemExit
-
 def validation(classifiers_feats, X_valid, y_valid, voting='mode'):
     k_max = [5,10,20,30,40,50]
     best_k = 0
@@ -68,7 +64,7 @@ def saveResults(pred_ensamble, X_train, y_train, y_test, best_k, validation, exe
     np.savetxt('{}/pred.txt'.format(path), pred_ensamble, fmt='%d')
     np.savetxt('{}/validation.txt'.format(path), validation, fmt='%d,%.5f,%.5f')
     output= open('{}/results.txt'.format(path), "w")    
-    output.write(results)
+    output.write(results)    
     print('Results:')
     print('    {}/pred.txt'.format(path))
     print('    {}/results.txt'.format(path))
@@ -79,17 +75,16 @@ def computeMetrics(y_pred, y_true):
     f1 = f1_score(y_true, y_pred, average='weighted')
     return accuracy, f1
 
-
-print('PERFORMING EXPERIMENTS WITH THE NEW META-DATA...')
 #datasets = ['vertebral_column']
 datasets = os.listdir('data')
 n_models = [10,30,50,100]
 
-divergence = {'nodivergence':False,'divergence':True}
+divergence = {'nodivergence':None,'yule':'yule','disagreement':'disagreement'}
+meta_data_type = {'oracle':'oracle','countclass':'count_class'}
 
 #ds = sys.argv[1]
 
-results_folder = 'Results_new'
+results_folder = 'results'
 ResultsPath_baselines = None
 
 try:
@@ -130,34 +125,37 @@ for ds in datasets:
             else:
                 ens = None
 
-            for dv in divergence:            
-                start_time = time()
-                opf_ens = OpfSemble(n_models=n, n_folds=10, n_classes=n_classes, ensemble=ens, divergence=divergence[dv])
-                new_x = opf_ens.fit(X, y)
-                end_time_initial = time() -start_time
-                voting = ['mode', 'average', 'intercluster','mode_best', 'intracluster', 'aggregation']                
-                
-                for vote in voting:                    
-                    ResultsPath = '{}/OPF_Ensemble_{}/{}/{}/{}/{}'.format(results_folder,dv,vote,ds,f,n)                    
-
-                    if not os.path.exists(ResultsPath):
-                        os.makedirs(ResultsPath)
-                    elif os.path.exists('{}/results.txt'.format(ResultsPath)):
-                        print('Folder {} already exists with all the validation metrics...'.format(ResultsPath))
-                        continue
-
-                    if vote=='mode':
-                        ResultsPath_baselines = '{}/Baselines_{}/{}/{}/{}/{}'.format(results_folder,'baseline',dv,ds,f,n)                                   
-                        if not os.path.exists(ResultsPath_baselines):
-                            os.makedirs(ResultsPath_baselines)
-                        elif os.path.exists('{}/results.txt'.format(ResultsPath_baselines)):
-                            print('Folder {} already exists with all the validation metrics...'.format(ResultsPath_baselines))
-                            continue
-    
+            for dv in divergence:
+                for meta in meta_data_type:
                     start_time = time()
-                    pred_ensamble, best_k, validation_results = run(new_x, X_test, X_valid, y_valid, voting = vote)
-                    end_time = time() -start_time
-                    saveResults(pred_ensamble, X, y, y_test, best_k, validation_results, end_time+end_time_initial, ResultsPath, opf_ens.ensemble, ensemble_name='OPF_ENSEMBLE_{}'.format(vote), compute_models=vote=='mode',end_time_initial=end_time_initial,ResultsPath_baselines=ResultsPath_baselines)  
+                    opf_ens = OpfSemble(n_models=n, n_folds=10, n_classes=n_classes, ensemble=ens, meta_data_mode=meta_data_type[meta],divergence=divergence[dv])
+                    new_x = opf_ens.fit(X, y)
+                    end_time_initial = time() -start_time
+                    voting = ['mode', 'average', 'intercluster','mode_best', 'intracluster', 'aggregation']                
+                    
+                    for vote in voting:                    
+                        ResultsPath = '{}/OPF_Ensemble_{}_{}/{}/{}/{}/{}'.format(results_folder,meta,dv,vote,ds,f,n)                    
+
+                        if not os.path.exists(ResultsPath):
+                            os.makedirs(ResultsPath)
+                        elif os.path.exists('{}/results.txt'.format(ResultsPath)):
+                            print('Folder {} already exists with all the validation metrics...'.format(ResultsPath))
+                            continue
+
+                        if vote=='mode':
+                            ResultsPath_baselines = '{}/Baselines_{}/{}/{}/{}'.format(results_folder,'baseline',ds,f,n)                                   
+                            if not os.path.exists(ResultsPath_baselines):
+                                os.makedirs(ResultsPath_baselines)
+                            elif os.path.exists('{}/results.txt'.format(ResultsPath_baselines)):
+                                print('Folder {} already exists with all the validation metrics...'.format(ResultsPath_baselines))
+                                continue
+        
+                        start_time = time()
+                        pred_ensamble, best_k, validation_results = run(new_x, X_test, X_valid, y_valid, voting = vote)
+                        end_time = time() -start_time
+                        saveResults(pred_ensamble, X, y, y_test, best_k, validation_results, end_time+end_time_initial, ResultsPath, opf_ens.ensemble, ensemble_name='OPF_ENSEMBLE_{}'.format(vote), compute_models=vote=='mode',end_time_initial=end_time_initial,ResultsPath_baselines=ResultsPath_baselines) 
+                        # Saving the clusters produced by the unsupervised OPF
+                        opf_ens.save_clusters(ResultsPath)
 
             ResultsPath_Sl = '{}/Super_Learner/{}/{}/{}'.format(results_folder,ds,f,n)
             if not os.path.exists(ResultsPath_Sl):

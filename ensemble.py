@@ -5,6 +5,7 @@ from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier,
 from sklearn.neural_network import MLPClassifier
 from opfython.models.supervised import SupervisedOPF
 from ensemble_item import EnsembleItem
+from copy import deepcopy
 import numpy as np
 import sys
 import os
@@ -18,7 +19,7 @@ class Ensemble:
     A class which creates the models for the ensemble learning.
     """
 
-    def __init__(self, n_models=10, loading_path=None, saving_path=None):
+    def __init__(self, n_models=10, models=None, loading_path=None, saving_path=None):
         """
         Initialization of the following properties:
             - n_models: the number of models to be created
@@ -33,6 +34,14 @@ class Ensemble:
 
         self.n_models=n_models
         self.items = []
+
+        if (models != None):
+            # Check if the list contains at least one baseline classifier
+            if (len(models) < 2):
+                raise SystemExit('The models list must have at least two baseline classifiers!') 
+
+            self.build_ensemble_items(models)
+            return
         
         if (loading_path != None):            
             self.load_models(loading_path)
@@ -87,6 +96,12 @@ class Ensemble:
             
         if (saving_path != None):
             self.save_models(os.path.join(saving_path, str(n_models)))
+    
+    def build_ensemble_items(self, models):
+        # Build the ensemble with a list of pre-defined classifiers
+        for i,model in enumerate(models):
+            model_name = model.__class__.__name__
+            self.items.append(EnsembleItem('{}_{}'.format(model_name,i+1),deepcopy(model)))
             
     def save_models(self, path):
         if (len(self.items) == 0):
@@ -107,4 +122,11 @@ class Ensemble:
         models = os.listdir(path)
         
         for model in models:
-            self.items.append(EnsembleItem(model.split('.')[0], pickle.load(open(os.path.join(path,model), 'rb'))))
+            m = deepcopy(pickle.load(open(os.path.join(path,model), 'rb')))
+
+            # limit the number of iterations of the SVM model with polynomial kernel
+            # it is important to avoid an 'endless' fitting of the model
+            if (isinstance(m,SVC) and m.kernel=='poly'):
+                m.max_iter=100000
+
+            self.items.append(EnsembleItem(model.split('.')[0], m))

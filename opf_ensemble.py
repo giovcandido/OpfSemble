@@ -17,7 +17,8 @@ from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from scipy.stats import mode
 from opfython.models.unsupervised import UnsupervisedOPF
 from ensemble import Ensemble
-from sklearn.metrics import f1_score
+from sklearn.metrics import accuracy_score,f1_score
+from divergence_measures import disagreement_matrix,paired_q_matrix,kl_divergence_matrix
 from collections import defaultdict
 import math
 import numpy as np
@@ -31,7 +32,7 @@ class OpfSemble:
     A class which implements the OPF Ensemble Learning.
     """
 
-    def __init__(self, n_models=10, n_folds=10,n_classes=0,ensemble=None,meta_data_mode='count_class',divergence=False):
+    def __init__(self, n_models=10, n_folds=10,n_classes=0,ensemble=None,meta_data_mode='count_class',divergence=None):
         """
         Initialization of the class properties.
 
@@ -55,19 +56,27 @@ class OpfSemble:
         if (not meta_data_mode in ['oracle','count_class']):
             raise SystemExit('Value for the meta_data_mode is not valid. Please inform one of the following mode: ',['oracle','count_class'])
 
+        # Check for a valid divergence metric
+        if (not divergence in [None,'yule','disagreement','kullback-lieber']):
+            raise SystemExit('Divergence metric must be one of the following: yule, disagreement,kullback-lieber')            
+
         if (ensemble != None):
-            self.ensemble = ensemble
+            if (type(ensemble) == Ensemble):
+                print('Build ensemble from an Ensemble object...')
+                self.ensemble = ensemble
+            elif(type(ensemble) == list):
+                print('Build ensemble from a list of pre-defined classifiers...')                 
+                self.ensemble = Ensemble(n_models=len(ensemble),models=ensemble)
         else:        
             self.ensemble = Ensemble(n_models=n_models)
         
-        self.n_models = n_models
+        self.n_models = len(self.ensemble.items)
         self.n_folds = n_folds
         self.prototypes = None
         self.clusters = None
         self.prototypes_scores = None
         self.n_classes = n_classes
 
-        self.ensemble
         self.meta_data_mode = meta_data_mode
         self.divergence = divergence
 
@@ -102,6 +111,10 @@ class OpfSemble:
         y: array
             A column array with the labels of each samples in X        
         """
+
+        # Check for a valid meta_data_mode
+        if (not self.meta_data_mode in ['oracle','count_class']):
+            raise SystemExit('Value for the meta_data_mode is not valid. Please inform one of the following mode: ',['oracle','count_class'])        
 
         meta_X = np.array([], dtype=int)
         if self.n_classes==0:
@@ -148,10 +161,14 @@ class OpfSemble:
         else:
             new_x = np.copy(meta_X)
         
-        print('NEW_X: ',new_x)
-        # Check if Kullback-Lieber divergence should be calculated for the meta_X
-        if self.divergence:
-            new_x = self.__calculate_divergence(new_x)
+        # Apply divergence (or not) to meta_X (only if meta_data_mode is oracle)
+        if (not self.divergence is None and self.meta_data_mode=='oracle'):
+            if self.divergence=='yule':
+                new_x = paired_q_matrix(new_x.T)
+            elif self.divergence=='disagreement':
+                new_x = disagreement_matrix(new_x.T)
+            elif self.divergence=='kullback-lieber':
+                new_x = kl_divergence_matrix(new_x)
             
         return new_x
 
@@ -338,43 +355,96 @@ class OpfSemble:
         self.prototypes_scores =  prototypes_scores
         self.clusters = clusters
 
-    def __calculate_divergence(self,X):
+    def get_scores_baselines(self,X,y,path=None):
         '''
-        Function that performs the Kullback-Lieber divergence between each pair of samples in X
+            Function that computes the accuracy and the F1-score from each baseline regression model that compound the ensemble.
 
-        Parameters
-        ----------
-        X : array
-            Array with N rows and M columns.
+            Parameters
+            ----------
+            X : array
+                Array with the samples to be predicted
+            y : array
+                Array with output values of each test sample
+            path: str
+                Path to the folder where the baseline results will be saved. Default is None
 
-        Returns
-        -------
-        array
-            An array with size NxN with the KL divergence between the pairs of samples in X.
+            Returns
+            -------
+            scores : dictionary
+                A dictionary where each key is the baseline model's name and the value is a list with the MAE and MSE computed from the model
         '''
-        
-        # calculate the kl divergence
-        def kl_divergence(p, q):
-            return np.sum(np.where(p != 0, p * np.log(p / q), 0))
+
+        scores = {}
+        average_f1 = 'binary'
+
+        # Assigning the F1 average based on the number of classes
+        n_classes = len(np.unique(y))
+
+        if (n_classes > 2):
+            average_f1 = 'macro'
+
+        for item in self.ensemble.items:
+            model = item.classifier
+            y_pred = model.predict(X)
+            scores[item.key] = [accuracy_score(y,y_pred),f1_score(y,y_pred,average=average_f1)]
+
+        # Save the baseline results if 'path' is not None
+        if (not path is None):
+            final_list = []
+            for key in scores:
+                aux = []
+                model = key
+                aux.append(model)
+                arr = np.array(scores[key])
+
+                for j in range(len(arr)):
+                    aux.append(arr[j])
+
+                final_list.append(aux)
             
-        kl_array = np.zeros((X.shape[0],X.shape[0]))
-        for i in range(X.shape[0]):
-            for j in range(X.shape[0]):
-                # Getting the maximum value between the two arrays
-                max_ = max(np.max(X[i,:]),np.max(X[j,:]))
-                c1, _ = np.histogram(X[i,:], bins=np.arange(max_+2))
-                c2, _ = np.histogram(X[j,:], bins=np.arange(max_+2))
-                p = c1 / X.shape[1]
-                q = c2 / X.shape[1]
-                kl_array[i,j] = kl_divergence(p,q)
+            scores_baselines = np.array(final_list,dtype=object)
+            np.savetxt('{}/results.txt'.format(path),scores_baselines,fmt='%s',delimiter=',',header='Model,Accuracy,F1-Score') 
 
-        # Correction of infinity values
-        inf_value = 10
-        un = np.unique(kl_array)
+        return scores        
+
+    def save_clusters(self,path):
+        '''
+            Function that saves a text file with the clusters defined by the unsupervised OPF.
+
+            Parameters
+            ----------
+            path: str
+                Path to the folder where file will be saved.
+
+            Returns
+            -------
+                None
+        '''
+
+        if (self.clusters is None):
+            raise SystemExit('It is not possible to save the clusters because they are not defined yet! It might be happened because the model is not fitted yet!')
         
-        if (un[-2] == 0): # [0, inf]
-            kl_array[kl_array == np.inf] = inf_value
-        else: # [0, value, inf]
-            kl_array[kl_array == np.inf] = un[-2] * inf_value
-        
-        return kl_array
+        import os
+
+        # Auxiliary variables
+        clusters = []
+        prototypes = []
+
+        for c in self.clusters:
+            clusters.append([c,self.clusters[c]])
+
+        for p in self.prototypes_scores:
+            prototypes.append([p,self.prototypes_scores[p]])
+
+        print('Saving the OPF clusters and their prototypes...')
+        clusters = np.array(clusters,dtype=object)
+        prototypes = np.array(prototypes,dtype=object)
+
+        if (not os.path.exists(path)):
+            os.makedirs(path)
+
+        try:
+            np.savetxt('{}/clusters.txt'.format(path),clusters,fmt='%s',delimiter=';',header='cluster_id,clusters')
+            np.savetxt('{}/prototypes.txt'.format(path),prototypes,fmt='%s',delimiter=',',header='prototype,F1')
+        except:
+            raise SystemExit('Something went wrong while saving the clusters and prototypes!')

@@ -30,7 +30,8 @@ To ensure the code performs properly, you need to install the following packages
 - pandas >= 1.0.5
 - numpy >= 1.18.5
 
-**Obs: OPFython is a Python-inspired implementation of the OPF framework. It provides the models for supervised, semi-supervised, and unsupervised classification. You must install it to load the unsupervised OPF included in the OPFsemble implementation.*
+*Obs: OPFython is a Python-inspired implementation of the OPF framework. It provides the models for supervised, semi-supervised, and unsupervised classification. You must install it to load the unsupervised OPF included in the OPFsemble implementation. Check the following link for further information:* <br>
+[https://github.com/gugarosa/opfython](https://github.com/gugarosa/opfython)
 
 # Citation
 
@@ -53,5 +54,5 @@ If you have any further questions, please do not hesitate to contact us.
 | Author                    | E-mail                        |
 | ----------------------    | ----------------------        |
 | Danilo Samuel Jodas       | danilojodas@gmail.com         | <br>
-| Leandro Aparecido Passos  | l.passosjunior@wlv.ac.uk      | <br>
+| Leandro Aparecido Passos  | leandro.passos@unesp.br      | <br>
 | João Paulo Papa           | joao.papa@unesp.br            | <br>

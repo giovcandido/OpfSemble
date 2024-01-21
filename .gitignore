@@ -3,6 +3,15 @@ results/
 results*
 latex_tables/
 
+GenerateTableDifferenceDivergence.ipynb
+GenerateTables.ipynb
+load_results*
+OpfEnsamble.ipynb
+print_table*
+run_exp*
+save_models.py
+super_learner.py
+
 *.log
 
 .ipynb_checkpoints

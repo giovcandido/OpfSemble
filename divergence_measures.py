@@ -142,13 +142,15 @@ def kl_divergence_matrix(preds):
             q = c2 / preds.shape[1]
             kl_array[i,j] = kl_divergence(p,q)
 
-    # Correction of infinity values
-    inf_value = 10
     un = np.unique(kl_array)
-    
-    if (un[-2] == 0): # [0, inf]
-        kl_array[kl_array == np.inf] = inf_value
-    else: # [0, value, inf]
-        kl_array[kl_array == np.inf] = un[-2] * inf_value
+
+    if (len(un) > 1):
+        # Correction of infinity values
+        inf_value = 10
+
+        if (un[-2] == 0): # [0, inf]
+            kl_array[kl_array == np.inf] = inf_value
+        else: # [0, value, inf]
+            kl_array[kl_array == np.inf] = un[-2] * inf_value
     
     return kl_array    

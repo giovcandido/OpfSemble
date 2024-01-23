@@ -5,7 +5,7 @@ Created on Tue May 12 09:04:58 2020
 @author: DANILO
 
 THIS CODE WAS ADAPTED FROM THE EXAMPLE AVAILABLE AT https://machinelearningmastery.com/super-learner-ensemble-in-python/
-AND CREATED BY Jason Brownlee
+AND CREATED BY Jason Brownlee. WE INCLUDE A WIDE RANGE OF CHANGES TO PERFORM THE INSTRUCTIONS FOR ENSEMBLE PRUNING BASED ON THE OPF.
 """
 
 from numpy import vstack
@@ -152,11 +152,12 @@ class OpfSemble:
         if (self.meta_data_mode=='count_class'):
             # Creating a new vector with the baseline predictions' counts for each class
             new_x = np.zeros((self.n_models,self.n_classes))
+            
             for i,_ in enumerate(meta_X):
                 un,counts = np.unique(meta_X[i],return_counts=True)
                 for j,c in enumerate(un):
                     # Minimum label value must be 0 for the new_x indexing
-                    c = c if np.min(un) == 0 else c - 1
+                    c = c if np.min(un) == 0 and c < self.n_classes else c - 1
                     new_x[i,c] = counts[j]
         else:
             new_x = np.copy(meta_X)
@@ -235,7 +236,6 @@ class OpfSemble:
             if voting=='mode':
                 #major voting
                 pred, _ = mode(preds, axis=0)
-                pred = pred[0]
             elif voting=='average':
                 #compute the prototypes average score by label
                 mat = np.zeros((self.n_classes, len(self.prototypes)))
@@ -282,7 +282,6 @@ class OpfSemble:
                 else:
                     pred = preds_each_cluster
                 
-                pred = pred[0]
             elif voting=='mode_best':
                 max_cluster_value = np.zeros(len(self.clusters))
                 max_cluster_index = np.zeros(len(self.clusters)).astype(int)
@@ -300,7 +299,6 @@ class OpfSemble:
                     preds_best_cluster.append(pr)
                 preds_best_cluster= np.asarray(preds_best_cluster)
                 pred, _ = mode(preds_best_cluster, axis=0)
-                pred = pred[0]
             elif voting=='aggregation': # aggregation of all voting methods
                 voting_methods = [v for v in voting_options if v != 'aggregation']
                 preds = list()

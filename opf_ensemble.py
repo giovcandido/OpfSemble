@@ -32,7 +32,7 @@ class OpfSemble:
     A class which implements the OPF Ensemble Learning.
     """
 
-    def __init__(self, n_models=10, n_folds=10,n_classes=0,ensemble=None,meta_data_mode='count_class',divergence=None):
+    def __init__(self, n_models=10, n_folds=10,n_classes=0,ensemble=None,meta_data_mode='count_class',divergence=None,bootstrapping=False,random_state=None):
         """
         Initialization of the class properties.
 
@@ -50,6 +50,10 @@ class OpfSemble:
             The approach to create the meta-data from the cross validation predictions. Default is 'count_class'
         divergence: bool
             It specifies whether to apply or not the Kullback-Lieber divergence on the meta-data. Default is False
+        bootstrapping: bool
+            Indicates whether to apply the boostrapping during the training of the estimators. Default is False
+        random_state: int,None
+            Seed value for the bootstrapping approach. Default is None
         """
 
         # Check for a valid meta_data_mode
@@ -79,6 +83,11 @@ class OpfSemble:
 
         self.meta_data_mode = meta_data_mode
         self.divergence = divergence
+
+        self.bootstrapping = bootstrapping
+        self.random_state = random_state
+        self.max_features = None
+        self.max_samples = None
 
     # create a list of base-models
     def get_models(self):
@@ -115,7 +124,7 @@ class OpfSemble:
         # Check for a valid meta_data_mode
         if (not self.meta_data_mode in ['oracle','count_class']):
             raise SystemExit('Value for the meta_data_mode is not valid. Please inform one of the following mode: ',['oracle','count_class'])        
-
+        
         meta_X = np.array([], dtype=int)
         if self.n_classes==0:
             self.n_classes = len(np.unique(y))
@@ -131,12 +140,20 @@ class OpfSemble:
             # get data
             train_X, test_X = X[train_ix], X[test_ix]
             train_y, test_y = y[train_ix], y[test_ix]
+            
             # fit and make predictions with each sub-model
-        
-            for item in self.ensemble.items:
+            for i,item in enumerate(self.ensemble.items):
                 model = item.classifier
-                model.fit(train_X, train_y)
+                
+                # Checks if bootstrapping is enabled
+                if (self.bootstrapping):
+                    X_boot,y_boot = self.__bootstrap_sample(train_X,train_y,i)
+                    model.fit(X_boot,y_boot)
+                else:
+                    model.fit(train_X, train_y)
+
                 yhat = model.predict(test_X)
+            
                 item.score += f1_score(yhat, test_y, average='weighted')/self.n_folds
                 if (self.meta_data_mode=='oracle'):
                     res = np.copy((yhat == test_y).astype(int))
@@ -352,6 +369,57 @@ class OpfSemble:
         self.prototypes =  prototype        
         self.prototypes_scores =  prototypes_scores
         self.clusters = clusters
+
+    def __bootstrap_sample(self,X,y,counter=0):
+        """
+        Generate a bootstrap sample with replacement from a 2D array.
+
+        Args:
+            X (array): Input samples.
+            y (array): Labels of the input samples.
+            counter (int): Value to increment the seed of the random state.
+
+        Returns:
+            bootstrap_sample (array): Bootstrap sample of the same shape as the input data.
+        """
+
+
+
+        if (not self.random_state is None):
+            np.random.seed(self.random_state+counter)
+
+        n_samples,n_features = X.shape
+        
+        # Bootstrapping for the samples
+        if (self.max_samples is None):
+            m = n_samples
+        else:
+            if (self.max_samples > n_samples):
+                m=n_samples
+            else:
+                m=self.max_samples
+        
+        # Bootstrapping for the features
+        if (self.max_features == 'sqrt'):
+            n = round(sqrt(n_features))
+        elif (type(self.max_features) == int):
+            if (self.max_features > n_features):
+                n = n_features
+            else:
+                n = self.max_features
+        else:
+            n = n_features
+        
+        # Bootstrapping for the samples
+        idx_samples = np.random.choice(n_samples, m, replace=True)
+        # Bootstrapping for the features
+        idx_feats = np.sort(np.random.choice(n_features, n, replace=False))
+        # Selects the bootstrap samples and their associated bootstrap features
+        X_sub = X[idx_samples, :]
+        X_sub = X_sub[:,idx_feats]
+        y_sub = y[idx_samples]
+        
+        return X_sub,y_sub        
 
     def get_scores_baselines(self,X,y,path=None):
         '''

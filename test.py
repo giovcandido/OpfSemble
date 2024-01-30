@@ -11,6 +11,8 @@ from sklearn.metrics import accuracy_score
 import sys
 from divergence_measures import disagreement_matrix,paired_q_matrix
 
+from opfython.models.supervised import SupervisedOPF
+
 np.set_printoptions(threshold=sys.maxsize)
 
 import warnings
@@ -35,7 +37,7 @@ classifiers = Ensemble(n_models=len(classifiers_list),models=classifiers_list)
 #classifiers = classifiers_list
 
 # Build the OPFsemble instance
-ens = OpfSemble(ensemble=classifiers,divergence='disagreement',meta_data_mode='count_class')
+ens = OpfSemble(ensemble=classifiers,divergence='disagreement',meta_data_mode='count_class',bootstrapping=False,random_state=None)
 
 # Get the meta data
 meta_X = ens.fit(X_train,y_train)

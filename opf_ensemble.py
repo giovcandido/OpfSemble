@@ -8,23 +8,26 @@ THIS CODE WAS ADAPTED FROM THE EXAMPLE AVAILABLE AT https://machinelearningmaste
 AND CREATED BY Jason Brownlee. WE INCLUDE A WIDE RANGE OF CHANGES TO PERFORM THE INSTRUCTIONS FOR ENSEMBLE PRUNING BASED ON THE OPF.
 """
 
+import logging
+import math
+import sys
+from collections import defaultdict
+
+import numpy as np
 from numpy import vstack
+from opfython.models.unsupervised import UnsupervisedOPF
+from scipy.stats import mode
+from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score, f1_score
 from sklearn.model_selection import KFold
 from sklearn.neighbors import KNeighborsClassifier
-from sklearn.linear_model import LogisticRegression
 from sklearn.svm import SVC
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
-from scipy.stats import mode
-from opfython.models.unsupervised import UnsupervisedOPF
-from ensemble import Ensemble
-from sklearn.metrics import accuracy_score,f1_score
-from divergence_measures import disagreement_matrix,paired_q_matrix,kl_divergence_matrix
-from collections import defaultdict
-import math
-import numpy as np
-import sys
 
-import logging
+from divergence_measures import (disagreement_matrix, kl_divergence_matrix,
+                                 paired_q_matrix)
+from ensemble import Ensemble
+
 logging.disable(sys.maxsize)
 
 class OpfSemble:
@@ -32,7 +35,7 @@ class OpfSemble:
     A class which implements the OPF Ensemble Learning.
     """
 
-    def __init__(self, n_models=10, n_folds=10,n_classes=0,ensemble=None,meta_data_mode='count_class',divergence=None,bootstrapping=False,random_state=None):
+    def __init__(self, n_models=10, n_folds=10, n_classes=0, ensemble=None, meta_data_mode='count_class', divergence=None, bootstrapping=False, random_state=None):
         """
         Initialization of the class properties.
 
@@ -226,17 +229,31 @@ class OpfSemble:
             
             # Getting the ID of the best-performing prototype assigned by the Unsupervised OPF
             idx_prot = np.where([i.key == max_key for i in self.ensemble.items])[0][0]
-            
+
             # Getting the classifiers from the best-performing cluster
             clfs = self.clusters[idx_prot]
+            scores = self.clusters_scores[idx_prot]
             
             # Getting predictions from classifiers
-            preds = []
-            for c in clfs:
-                preds.append(c.predict(X))
+
+            # HARD VOTING
+            # preds = []
+
+            # for c in clfs:
+            #     preds.append(c.predict(X))
+
+            # # Getting the final predictions based on the most common predicted class among the classifiers
+            # pred = mode(np.asarray(preds),axis=0)[0].reshape(-1,1)
+
+            # SOFT VOTING
+            preds = 0.
+
+            for s, c in zip(scores, clfs):
+                preds += s * c.predict_proba(X)
             
-            # Getting the final predictions based on the most common predicted class among the classifiers
-            pred = mode(np.asarray(preds),axis=0)[0].reshape(-1,1)  
+            preds /= np.sum(scores)
+            
+            pred = np.argmax(preds, axis=1).reshape(-1, 1)
         else:
             preds = []
             scores = []
@@ -347,6 +364,7 @@ class OpfSemble:
 
         proto= []
         clusters = defaultdict(list)
+        clusters_scores = defaultdict(list)
         
         for i in range(opf_unsup.subgraph.n_nodes):
             self.ensemble.items[i].cluster_id=opf_unsup.subgraph.nodes[i].root;
@@ -355,7 +373,8 @@ class OpfSemble:
             
             # Adding models to the corresponding prototype root in order to form a dictionary of clusters
             clusters[opf_unsup.subgraph.nodes[i].root].append(self.ensemble.items[i].classifier)
-
+            clusters_scores[opf_unsup.subgraph.nodes[i].root].append(self.ensemble.items[i].score)
+        
         prototype = dict()
         prototypes_scores = dict()        
         for i in range(self.ensemble.n_models):
@@ -369,6 +388,7 @@ class OpfSemble:
         self.prototypes =  prototype        
         self.prototypes_scores =  prototypes_scores
         self.clusters = clusters
+        self.clusters_scores = clusters_scores
 
     def __bootstrap_sample(self,X,y,counter=0):
         """

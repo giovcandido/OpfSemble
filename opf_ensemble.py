@@ -268,8 +268,17 @@ class OpfSemble:
             preds = np.asarray(preds)
     
             if voting=='mode':
-                #major voting
-                pred, _ = mode(preds, axis=0)
+                # HARD VOTING
+                # pred, _ = mode(preds, axis=0)
+
+                # SOFT VOTING
+                pred = 0.
+
+                for p, s in zip(preds, scores):
+                    pred += s * p
+                
+                pred /= np.sum(scores)
+                pred = np.argmax(pred, axis=1).reshape(-1, 1)
             elif voting=='average':
                 #compute the prototypes average score by label
                 mat = np.zeros((self.n_classes, len(self.prototypes)))

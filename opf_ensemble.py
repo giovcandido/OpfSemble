@@ -123,7 +123,7 @@ class OpfSemble:
         y: array
             A column array with the labels of each samples in X        
         """
-
+        
         # Check for a valid meta_data_mode
         if (not self.meta_data_mode in ['oracle','count_class']):
             raise SystemExit('Value for the meta_data_mode is not valid. Please inform one of the following mode: ',['oracle','count_class'])        
@@ -193,7 +193,7 @@ class OpfSemble:
             
         return new_x
 
-    def predict(self, X, voting='mode'):
+    def predict(self, X, voting='hard_mode'):
         """
         Perform the classification of the data in X with stacked model
 
@@ -212,11 +212,11 @@ class OpfSemble:
 
         if self.prototypes is None:
             raise SystemExit('Meta model was not fitted!')
-            
+        
         if self.clusters is None:
             raise SystemExit('No cluster is defined! It might be happened because the model is not fitted yet!')
-
-        voting_options = ['intracluster','mode','average','intercluster','mode_best','aggregation']
+        
+        voting_options = ['intracluster','hard_mode','soft_mode','average','intercluster','mode_best','aggregation']
 
         if (not voting in voting_options):
             raise SystemExit('The informed voting for predict is not compatible with a valid option. Please, inform one of the following options: ',voting_options)
@@ -235,50 +235,42 @@ class OpfSemble:
             scores = self.clusters_scores[idx_prot]
             
             # Getting predictions from classifiers
-
-            # HARD VOTING
-            # preds = []
-
-            # for c in clfs:
-            #     preds.append(c.predict(X))
-
-            # # Getting the final predictions based on the most common predicted class among the classifiers
-            # pred = mode(np.asarray(preds),axis=0)[0].reshape(-1,1)
-
-            # SOFT VOTING
-            preds = 0.
-
-            for s, c in zip(scores, clfs):
-                preds += s * c.predict_proba(X)
+            preds = []
             
-            preds /= np.sum(scores)
-            
-            pred = np.argmax(preds, axis=1).reshape(-1, 1)
+            for c in clfs:
+                preds.append(c.predict(X))
+
+            # Getting the final predictions based on the most common predicted class among the classifiers
+            pred = mode(np.asarray(preds), axis=0)[0].reshape(-1, 1)
         else:
             preds = []
             scores = []
-    
+
             for key in self.prototypes:
                 model = self.prototypes[key]
                 scores.append(self.prototypes_scores[key])
                 pr = model.predict(X)
                 preds.append(pr)
-    
+            
             scores = np.asarray(scores)
             preds = np.asarray(preds)
-    
-            if voting=='mode':
-                # HARD VOTING
-                # pred, _ = mode(preds, axis=0)
 
-                # SOFT VOTING
-                pred = 0.
-
-                for p, s in zip(preds, scores):
-                    pred += s * p
+            if voting=='hard_mode':
+                pred, _ = mode(preds, axis=0)
+            elif voting=='soft_mode':
+                # Create a list of dicts to store the score attributed 
+                # to each predicted label across different models
+                voting_results = [defaultdict(float) for _ in range(preds.shape[1])]
                 
-                pred /= np.sum(scores)
-                pred = np.argmax(pred, axis=1).reshape(-1, 1)
+                for model_idx, model_preds in enumerate(preds):
+                    
+                    for sample_idx, predicted_label in enumerate(model_preds):
+                        
+                        # Add the model's score to the predicted label entry
+                        voting_results[sample_idx][predicted_label] += scores[model_idx]
+                
+                # Extract the final prediction from the voting results
+                pred = np.array([max(d, key=d.get) for d in voting_results])
             elif voting=='average':
                 #compute the prototypes average score by label
                 mat = np.zeros((self.n_classes, len(self.prototypes)))

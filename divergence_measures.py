@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def __coefficients(preds):
     '''
     Function that determines when two classifiers agree or disagree in their predictions

@@ -1,7 +1,8 @@
-import numpy as np
+import logging
 import sys
 
-import logging
+import numpy as np
+
 logging.disable(sys.maxsize)
 
 class EnsembleItem:

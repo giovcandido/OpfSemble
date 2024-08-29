@@ -1,17 +1,20 @@
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.svm import SVC
-from sklearn.naive_bayes import GaussianNB
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier, ExtraTreesClassifier
-from sklearn.neural_network import MLPClassifier
-from opfython.models.supervised import SupervisedOPF
-from ensemble_item import EnsembleItem
-from copy import deepcopy
-import numpy as np
-import sys
+import logging
 import os
 import pickle
+import sys
+from copy import deepcopy
 
-import logging
+import numpy as np
+from opfython.models.supervised import SupervisedOPF
+from sklearn.ensemble import (ExtraTreesClassifier, GradientBoostingClassifier,
+                              RandomForestClassifier)
+from sklearn.naive_bayes import GaussianNB
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.neural_network import MLPClassifier
+from sklearn.svm import SVC
+
+from ensemble_item import EnsembleItem
+
 logging.disable(sys.maxsize)
 
 class Ensemble:

@@ -1,56 +1,71 @@
-import numpy as np
-from opf_ensemble import OpfSemble
-from ensemble import Ensemble
-from sklearn.model_selection import train_test_split, StratifiedKFold
-from sklearn.datasets import load_iris,load_breast_cancer,load_wine
-from sklearn.svm import SVC
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.naive_bayes import GaussianNB
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier, ExtraTreesClassifier
-from sklearn.metrics import accuracy_score
 import sys
-from divergence_measures import disagreement_matrix,paired_q_matrix
+import warnings
 
-from opfython.models.supervised import SupervisedOPF
+import numpy as np
+import pandas as pd
+from sklearn.datasets import load_breast_cancer
+from sklearn.ensemble import ExtraTreesClassifier, RandomForestClassifier
+from sklearn.metrics import accuracy_score
+from sklearn.model_selection import train_test_split
+from sklearn.naive_bayes import GaussianNB
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.svm import SVC
+
+from opf_ensemble import OpfSemble
+
+warnings.filterwarnings('ignore')
 
 np.set_printoptions(threshold=sys.maxsize)
 
-import warnings
-warnings.filterwarnings('ignore') 
+def load_data(data_path='./dataset.csv'):
+    # Load the dataset
+    dataset = pd.read_csv(data_path)
 
-# Load the dataset
-data = load_breast_cancer()
-X = data.data
-y = data.target
+    # Get the features
+    features = dataset.loc[:, 'Espécie - Caesalpinia ferrea var. leiostachya - One-Hot':'Copa Desequilibrada'].to_numpy()
 
-# Split the dataset into train and test
-X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=0.3,random_state=2)
+    # Get the targets
+    targets = dataset['Nível de Deterioração - Colo - 3 Classes'].to_numpy()
 
-# List of pre-defined classifiers
-# You can build the OPFsemble with a list of classifiers or with an instance of the Ensemble class
-classifiers_list = [KNeighborsClassifier(),ExtraTreesClassifier(n_estimators=50),GaussianNB(),SVC(kernel='linear'),SVC(kernel='rbf'),RandomForestClassifier()]
+    # Return the loaded data
+    return features, targets
 
-# Ensemble class instance to construct the OPFsemble
-classifiers = Ensemble(n_models=len(classifiers_list),models=classifiers_list)
+execs = 1
+mean = 0.
 
-# Uncomment the line below if you want a list of pre-defined classifiers
-#classifiers = classifiers_list
+for seed in range(execs):
+    np.random.seed(seed)
 
-# Build the OPFsemble instance
-ens = OpfSemble(ensemble=classifiers,divergence='disagreement',meta_data_mode='count_class',bootstrapping=False,random_state=None)
+    # Load the dataset
+    # X, y = load_breast_cancer(return_X_y=True)
+    X, y = load_data()
 
-# Get the meta data
-meta_X = ens.fit(X_train,y_train)
-# Fit the model with the meta data in order to find the clusters of similar classifiers
-ens.fit_meta_model(meta_X,k_max=5)
-# Get the predictions
-y_pred = ens.predict(X_test,voting='mode')
+    # Split the dataset into train and test
+    X_train, X_test, y_train, y_test = train_test_split(X, y.astype(int), test_size=.3)
 
-#print(ens.clusters)
-print(ens.prototypes)
+    # List of pre-defined classifiers
+    classifiers = [ExtraTreesClassifier(n_estimators=50)] * 30
 
-for item in ens.ensemble.items:
-	print(item.key)
-#print(ens.get_scores_baselines(X_test,y_test))
+    # Build the OPFsemble instance
+    # ens = OpfSemble(ensemble=classifiers, meta_data_mode='oracle', divergence=None, bootstrapping=False)
+    ens = OpfSemble(ensemble=classifiers, meta_data_mode='count_class', divergence=None, bootstrapping=False)
 
-print('Accuracy: ',accuracy_score(y_test,y_pred))
+    # Get the meta data
+    meta_X = ens.fit(X_train, y_train)
+
+    # Fit the model with the meta data in order to find the clusters of similar classifiers
+    ens.fit_meta_model(meta_X, k_max=5)
+
+    # Get the predictions
+    # y_pred = ens.predict(X_test, voting='hard_mode')
+    y_pred = ens.predict(X_test, voting='soft_mode')
+
+    # print(ens.clusters)
+    # print(ens.prototypes)
+
+    # for item in ens.ensemble.items:
+    # 	print(item.key)
+
+    mean += accuracy_score(y_test, y_pred)
+
+print('Accuracy: ', mean / execs)
